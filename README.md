@@ -1,5 +1,7 @@
 # Legal & Regulatory Claims Audit Engine
 
+## App Page: [Google AI Studio](https://aistudio.google.com/apps/28b6982d-1874-4413-86af-c6fe15a8aa11)
+
 ## Issue 3 Implementation: Status Badge Single Source of Truth
 
 ### Decision on ACTIVE (Requirement 3.2)
