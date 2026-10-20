@@ -1,0 +1,899 @@
+{
+  "meta": {
+    "database": "ClaimGuard Canonical Registry v1",
+    "rule_for_agent": "This JSON is the single source of truth. Render cards ONLY from these records. Any field without a populated provenance_id renders as 'Not on file'. banned_status enum: [BANNED, RESTRICTED, PERMITTED, PERMITTED_WITH_CRITERIA, UNKNOWN]. Evidence counts are computed from substantiation rows, never stored.",
+    "issues_solved_structurally": {
+      "1_provenance": "T11_provenance FK on every value row",
+      "2_template_failure": "No template data exists; null lookup = Not on file",
+      "3_status_single_source": "T4_regulatory_status.banned_status only; T9_status_history logs changes",
+      "4_substantiation_visibility": "Counts = query over T5 rows joined to T6 evidence_table"
+    }
+  },
+  "tables": {
+    "README_schema": [
+      {
+        "section": "CANONICAL_DB",
+        "content": "ClaimGuard registry v1 - single source of truth. The app renders ONLY from these tables."
+      },
+      {
+        "section": "KEYS",
+        "content": "product_id -> claims.claim_id -> formula_actives / regulatory_status / substantiation / enforcement / history (1:N). Every renderable value carries provenance_id FK."
+      },
+      {
+        "section": "ISSUE 1 ENFORCED BY",
+        "content": "provenance table + FK. Empty provenance_id = render 'Not on file' (see claims c_ker_001, c_tbs_001)."
+      },
+      {
+        "section": "ISSUE 2 ENFORCED BY",
+        "content": "No template defaults exist: all values live here. Null lookup = 'Not on file'."
+      },
+      {
+        "section": "ISSUE 3 ENFORCED BY",
+        "content": "regulatory_status.banned_status is the ONLY status field; enum [BANNED,RESTRICTED,PERMITTED,PERMITTED_WITH_CRITERIA,UNKNOWN]. status_history logs every change."
+      },
+      {
+        "section": "ISSUE 4 ENFORCED BY",
+        "content": "Evidence count = query over substantiation rows (computed_status = ESTABLISHED / count of implicated actives). Counts are never stored. evidence_entry_id FK -> evidence_table."
+      },
+      {
+        "section": "HONESTY RULE",
+        "content": "Rows with empty provenance_id or UNKNOWN status are scaffold, not data. Filter status column equivalents before analysis."
+      }
+    ],
+    "T1_products": [
+      {
+        "product_id": "prd_dcy_kds",
+        "brand": "Ducray (Pierre Fabre)",
+        "product_name": "Kelual DS Shampooing Traitant Antipelliculaire",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "FR",
+        "jurisdiction": "EU-27",
+        "channel": "pharmacy",
+        "volume_ml": 100,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_eur_dca",
+        "brand": "Eucerin (Beiersdorf)",
+        "product_name": "DermoCapillaire Anti-Dandruff Gel Shampoo",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "DE",
+        "jurisdiction": "EU-27",
+        "channel": "pharmacy",
+        "volume_ml": 250,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_nvm_adp",
+        "brand": "NIVEA MEN (Beiersdorf)",
+        "product_name": "Anti-Dandruff Power Shampoo (Active System)",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "DE",
+        "jurisdiction": "EU-27",
+        "channel": "mass",
+        "volume_ml": 250,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_tbs_gsc",
+        "brand": "The Body Shop",
+        "product_name": "Ginger Scalp Care Shampoo",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "UK",
+        "jurisdiction": "UK/EU",
+        "channel": "specialty",
+        "volume_ml": 400,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_alp_a3",
+        "brand": "Alpecin (Dr. Wolff)",
+        "product_name": "A3 Anti-Schuppen Shampoo",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "DE",
+        "jurisdiction": "EU-27",
+        "channel": "mass",
+        "volume_ml": 250,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_sch_bc",
+        "brand": "Schwarzkopf (Henkel)",
+        "product_name": "BC Bonacure Scalp Care Anti-Dandruff",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "DE",
+        "jurisdiction": "EU-27",
+        "channel": "salon",
+        "volume_ml": 200,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_ker_sym",
+        "brand": "Kérastase (L'Oréal)",
+        "product_name": "Symbiose Bain Crème Anti-Pelliculaire",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "FR",
+        "jurisdiction": "EU-27",
+        "channel": "salon",
+        "volume_ml": 250,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_vch_dds",
+        "brand": "Vichy Dercos (L'Oréal)",
+        "product_name": "Dercos Anti-Dandruff DS Treatment Shampoo",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "FR",
+        "jurisdiction": "EU-27",
+        "channel": "pharmacy",
+        "volume_ml": 200,
+        "nicic_classification_fix": ""
+      },
+      {
+        "product_id": "prd_hs_cc",
+        "brand": "Head & Shoulders (P&G)",
+        "product_name": "Classic Clean Anti-Dandruff Shampoo",
+        "niche_classification": "anti_dandruff_shampoo",
+        "country_origin": "US",
+        "jurisdiction": "EU-27 (sold)",
+        "channel": "mass",
+        "volume_ml": 400,
+        "nicic_classification_fix": ""
+      }
+    ],
+    "T2_claims": [
+      {
+        "claim_id": "c_dcy_001",
+        "product_id": "prd_dcy_kds",
+        "claim_text": "Eliminates dandruff from the first application; severe dandruff states (Etats Pelliculaires Severes)",
+        "claim_context": "label_packaging",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "FR/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_005",
+        "implicated_actives": "ciclopirox olamine|piroctone olamine"
+      },
+      {
+        "claim_id": "c_dcy_002",
+        "product_id": "prd_dcy_kds",
+        "claim_text": "Limits recurrence; soothing anti-dandruff treatment",
+        "claim_context": "product_page",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "FR/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_005",
+        "implicated_actives": "ciclopirox olamine|piroctone olamine"
+      },
+      {
+        "claim_id": "c_eur_001",
+        "product_id": "prd_eur_dca",
+        "claim_text": "Gentle flake removal for sensitive and dry scalps",
+        "claim_context": "product_page_hero",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "DE/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_006",
+        "implicated_actives": "piroctone olamine|climbazole|polidocanol"
+      },
+      {
+        "claim_id": "c_eur_002",
+        "product_id": "prd_eur_dca",
+        "claim_text": "Dermatological formula for sensitive scalps",
+        "claim_context": "product_page",
+        "claim_category": "brand_dermatological_claim",
+        "jurisdiction": "DE/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_006",
+        "implicated_actives": ""
+      },
+      {
+        "claim_id": "c_ker_001",
+        "product_id": "prd_ker_sym",
+        "claim_text": "[TO_COLLECT - verbatim hero copy from kerastase.com]",
+        "claim_context": "TO_COLLECT",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "FR/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "",
+        "implicated_actives": "salicylic acid|piroctone olamine"
+      },
+      {
+        "claim_id": "c_vch_001",
+        "product_id": "prd_vch_dds",
+        "claim_text": "[TO_COLLECT - verbatim hero copy; known: selenium disulfide 0.6% micronized]",
+        "claim_context": "TO_COLLECT",
+        "claim_category": "efficacy_claim + ingredient_content_claim",
+        "jurisdiction": "FR/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_017",
+        "implicated_actives": "selenium disulfide"
+      },
+      {
+        "claim_id": "c_vch_002",
+        "product_id": "prd_vch_dds",
+        "claim_text": "[TO_COLLECT - superlative wording, e.g. #1 dermatologist-recommended]",
+        "claim_context": "TO_COLLECT",
+        "claim_category": "comparative_claim (superlative)",
+        "jurisdiction": "FR/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "",
+        "implicated_actives": ""
+      },
+      {
+        "claim_id": "c_alp_001",
+        "product_id": "prd_alp_a3",
+        "claim_text": "[TO_COLLECT - anti-dandruff + anti-hair-loss dual claim per alpecin.com]",
+        "claim_context": "TO_COLLECT",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "DE/EU",
+        "capture_date": "2026-10-12",
+        "provenance_id": "pv_015",
+        "implicated_actives": "piroctone olamine|salicylic acid"
+      },
+      {
+        "claim_id": "c_tbs_001",
+        "product_id": "prd_tbs_gsc",
+        "claim_text": "[TO_COLLECT - ginger scalp care anti-dandruff positioning]",
+        "claim_context": "TO_COLLECT",
+        "claim_category": "efficacy_claim",
+        "jurisdiction": "UK",
+        "capture_date": "2026-10-12",
+        "provenance_id": "",
+        "implicated_actives": "piroctone olamine|white willow bark"
+      }
+    ],
+    "T3_formula_actives": [
+      {
+        "active_id": "fa_001",
+        "product_id": "prd_dcy_kds",
+        "ingredient": "Ciclopirox olamine",
+        "concentration": "1%",
+        "concentration_basis": "brand_stated_label",
+        "inci_position": "",
+        "provenance_id": "pv_005"
+      },
+      {
+        "active_id": "fa_002",
+        "product_id": "prd_dcy_kds",
+        "ingredient": "Piroctone olamine",
+        "concentration": "0.75%",
+        "concentration_basis": "brand_stated_label",
+        "inci_position": "",
+        "provenance_id": "pv_005"
+      },
+      {
+        "active_id": "fa_003",
+        "product_id": "prd_dcy_kds",
+        "ingredient": "Keluamid (acetamide MEA)",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "~4",
+        "provenance_id": "pv_005"
+      },
+      {
+        "active_id": "fa_004",
+        "product_id": "prd_eur_dca",
+        "ingredient": "Climbazole",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "",
+        "provenance_id": "pv_006"
+      },
+      {
+        "active_id": "fa_005",
+        "product_id": "prd_eur_dca",
+        "ingredient": "Piroctone olamine",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "",
+        "provenance_id": "pv_006"
+      },
+      {
+        "active_id": "fa_006",
+        "product_id": "prd_eur_dca",
+        "ingredient": "Polidocanol",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "",
+        "provenance_id": "pv_006"
+      },
+      {
+        "active_id": "fa_007",
+        "product_id": "prd_ker_sym",
+        "ingredient": "Salicylic acid",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "",
+        "provenance_id": "pv_016"
+      },
+      {
+        "active_id": "fa_008",
+        "product_id": "prd_ker_sym",
+        "ingredient": "Piroctone olamine",
+        "concentration": "NOT_DISCLOSED",
+        "concentration_basis": "inci_order_only",
+        "inci_position": "",
+        "provenance_id": "pv_016"
+      },
+      {
+        "active_id": "fa_009",
+        "product_id": "prd_vch_dds",
+        "ingredient": "Selenium disulfide",
+        "concentration": "0.6% micronized",
+        "concentration_basis": "brand_stated_label",
+        "inci_position": "",
+        "provenance_id": "pv_017"
+      },
+      {
+        "active_id": "fa_010",
+        "product_id": "prd_tbs_gsc",
+        "ingredient": "Piroctone olamine",
+        "concentration": "0.5% (TO_VERIFY)",
+        "concentration_basis": "brand_stated_label",
+        "inci_position": "",
+        "provenance_id": ""
+      }
+    ],
+    "T4_regulatory_status": [
+      {
+        "claim_id": "c_dcy_001",
+        "banned_status": "PERMITTED_WITH_CRITERIA",
+        "matched_provision_ref": "Reg. 655/2013 criterion 3",
+        "match_confidence": 0.9,
+        "exception_text": "Efficacy claim permissible if evidential support held; 'from first application' is an onset-speed claim needing product-specific substantiation",
+        "jurisdiction": "EU-27",
+        "provenance_id": "pv_002"
+      },
+      {
+        "claim_id": "c_dcy_002",
+        "banned_status": "PERMITTED_WITH_CRITERIA",
+        "matched_provision_ref": "Reg. 655/2013 criterion 3",
+        "match_confidence": 0.85,
+        "exception_text": "'Limits recurrence' needs product-specific data vs. category evidence",
+        "jurisdiction": "EU-27",
+        "provenance_id": "pv_002"
+      },
+      {
+        "claim_id": "c_eur_001",
+        "banned_status": "PERMITTED_WITH_CRITERIA",
+        "matched_provision_ref": "Reg. 655/2013 criterion 3 + German UWG §5",
+        "match_confidence": 0.9,
+        "exception_text": "Permitted contingent on substantiation; disease-cure language not permitted",
+        "jurisdiction": "EU-27",
+        "provenance_id": "pv_002"
+      },
+      {
+        "claim_id": "c_eur_002",
+        "banned_status": "UNKNOWN",
+        "matched_provision_ref": "",
+        "match_confidence": 0.0,
+        "exception_text": "No registry match yet - 'dermatological formula' positioning claim; requires separate match run",
+        "jurisdiction": "EU-27",
+        "provenance_id": ""
+      },
+      {
+        "claim_id": "c_ker_001",
+        "banned_status": "UNKNOWN",
+        "matched_provision_ref": "",
+        "match_confidence": 0.0,
+        "exception_text": "Claim text TO_COLLECT - cannot match before Layer 1 populated",
+        "jurisdiction": "EU-27",
+        "provenance_id": ""
+      },
+      {
+        "claim_id": "c_vch_001",
+        "banned_status": "RESTRICTED",
+        "matched_provision_ref": "Reg. 1223/2009 Annex III (selenium disulfide; cap ~1% rinse-off - VERIFY entry no.)",
+        "match_confidence": 0.8,
+        "exception_text": "Stated 0.6% within cap IF Annex III entry confirmed; numeric claim checkable against public limit",
+        "jurisdiction": "EU-27",
+        "provenance_id": "pv_018"
+      },
+      {
+        "claim_id": "c_vch_002",
+        "banned_status": "RESTRICTED",
+        "matched_provision_ref": "Reg. 655/2013 criterion 5 (fairness) - superlative claims",
+        "match_confidence": 0.85,
+        "exception_text": "Permissible only with robust current market-scoped survey; scope qualifier (countries/year) must be verified",
+        "jurisdiction": "EU-27",
+        "provenance_id": "pv_002"
+      },
+      {
+        "claim_id": "c_alp_001",
+        "banned_status": "UNKNOWN",
+        "matched_provision_ref": "",
+        "match_confidence": 0.0,
+        "exception_text": "Dual anti-dandruff + anti-hair-loss claim; hair-loss portion risks medicinal-classification - needs match run",
+        "jurisdiction": "EU-27",
+        "provenance_id": ""
+      },
+      {
+        "claim_id": "c_tbs_001",
+        "banned_status": "UNKNOWN",
+        "matched_provision_ref": "",
+        "match_confidence": 0.0,
+        "exception_text": "Claim text TO_COLLECT",
+        "jurisdiction": "UK",
+        "provenance_id": ""
+      }
+    ],
+    "T5_substantiation_rows": [
+      {
+        "sub_row_id": "sub_dcy_001",
+        "claim_id": "c_dcy_001",
+        "ingredient": "Ciclopirox olamine",
+        "role": "primary",
+        "evidence_entry_id": "ev_001",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_009"
+      },
+      {
+        "sub_row_id": "sub_dcy_002",
+        "claim_id": "c_dcy_001",
+        "ingredient": "Piroctone olamine",
+        "role": "mechanism",
+        "evidence_entry_id": "ev_002",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_010"
+      },
+      {
+        "sub_row_id": "sub_dcy_003",
+        "claim_id": "c_dcy_001",
+        "ingredient": "Keluamid (acetamide MEA)",
+        "role": "supporting",
+        "evidence_entry_id": "ev_007",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "NONE",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_014"
+      },
+      {
+        "sub_row_id": "sub_eur_001",
+        "claim_id": "c_eur_001",
+        "ingredient": "Piroctone olamine",
+        "role": "primary",
+        "evidence_entry_id": "ev_002",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_010"
+      },
+      {
+        "sub_row_id": "sub_eur_002",
+        "claim_id": "c_eur_001",
+        "ingredient": "Climbazole",
+        "role": "mechanism",
+        "evidence_entry_id": "ev_004",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_011"
+      },
+      {
+        "sub_row_id": "sub_eur_003",
+        "claim_id": "c_eur_001",
+        "ingredient": "Polidocanol",
+        "role": "supporting",
+        "evidence_entry_id": "ev_006",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "NONE",
+        "product_level_trial": "NONE_ON_FILE",
+        "provenance_id": "pv_013"
+      },
+      {
+        "sub_row_id": "sub_ker_001",
+        "claim_id": "c_ker_001",
+        "ingredient": "Salicylic acid",
+        "role": "primary",
+        "evidence_entry_id": "ev_005",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NOT_SEARCHED_YET",
+        "provenance_id": "pv_012"
+      },
+      {
+        "sub_row_id": "sub_ker_002",
+        "claim_id": "c_ker_001",
+        "ingredient": "Piroctone olamine",
+        "role": "mechanism",
+        "evidence_entry_id": "ev_002",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "NOT_SEARCHED_YET",
+        "provenance_id": "pv_010"
+      },
+      {
+        "sub_row_id": "sub_vch_001",
+        "claim_id": "c_vch_001",
+        "ingredient": "Selenium disulfide",
+        "role": "primary",
+        "evidence_entry_id": "ev_003",
+        "evidence_scope": "CATEGORY_LEVEL",
+        "computed_status": "ESTABLISHED",
+        "product_level_trial": "TO_SEARCH",
+        "provenance_id": "pv_011"
+      }
+    ],
+    "T6_evidence_table": [
+      {
+        "evidence_entry_id": "ev_001",
+        "ingredient": "Ciclopirox olamine",
+        "condition_or_function": "anti-dandruff (Malassezia)",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "PubMed: ciclopirox shampoo RCT literature (e.g. PMID 17214716-class)",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_002",
+        "ingredient": "Piroctone olamine",
+        "condition_or_function": "anti-dandruff (Malassezia)",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Biocide Reg. 528/2012 PT2 + anti-dandruff literature",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_003",
+        "ingredient": "Selenium disulfide",
+        "condition_or_function": "anti-dandruff",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Selsun-class literature; Annex III permitted use",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_004",
+        "ingredient": "Climbazole",
+        "condition_or_function": "anti-dandruff (antifungal)",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Antifungal literature (imidazole class)",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_005",
+        "ingredient": "Salicylic acid",
+        "condition_or_function": "keratolytic / flake removal",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Annex III entry 28 (rinse-off); keratolytic literature",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_006",
+        "ingredient": "Polidocanol",
+        "condition_or_function": "anti-dandruff efficacy",
+        "status": "NONE",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Local anaesthetic / anti-itch agent; no established flake-reduction efficacy",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_007",
+        "ingredient": "Keluamid (acetamide MEA)",
+        "condition_or_function": "anti-dandruff efficacy",
+        "status": "NONE",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Moisturizing agent; no established anti-dandruff efficacy",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      },
+      {
+        "evidence_entry_id": "ev_008",
+        "ingredient": "Zinc pyrithione",
+        "condition_or_function": "anti-dandruff",
+        "status": "ESTABLISHED",
+        "scope_default": "CATEGORY_LEVEL",
+        "citation": "Robust literature, BUT banned in EU cosmetics 2022-03-01 (Reg. 2021/1902) - evidence moot in EU",
+        "curator": "domain_expert_1",
+        "last_reviewed": "2026-10-12"
+      }
+    ],
+    "T7_enforcement": [
+      {
+        "enforcement_id": "enf_alp_001",
+        "claim_id": "c_alp_001",
+        "regulator": "ASA (UK)",
+        "enforcement_type": "ruling_ad_ban",
+        "enforcement_date": "2018-03-07",
+        "claim_flagged": "Alpecin caffeine shampoo 'helps reduce hair loss'",
+        "basis_of_action": "false_substantiation",
+        "outcome": "Ad banned; efficacy claim requires adequate product-specific evidence",
+        "document_url": "https://www.asa.org.uk/rulings/alpecin-7-march-2018",
+        "provenance_id": "pv_001"
+      },
+      {
+        "enforcement_id": "enf_hs_001",
+        "claim_id": "c_hs_001",
+        "regulator": "EU (Reg. 2021/1902)",
+        "enforcement_type": "regulatory_ban",
+        "enforcement_date": "2022-03-01",
+        "claim_flagged": "Zinc pyrithione in cosmetics (category-wide)",
+        "basis_of_action": "banned_ingredient",
+        "outcome": "Category reformulation; EU formulas switched actives, marketing copy largely unchanged - Layer 5 split jurisdiction history",
+        "document_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32021R1902",
+        "provenance_id": "pv_003"
+      },
+      {
+        "enforcement_id": "enf_none_001",
+        "claim_id": "c_eur_001",
+        "regulator": "[weekly scan: DGCCRF/BKartA/AGCM/CMA/ASA/EU CPC]",
+        "enforcement_type": "none_found",
+        "enforcement_date": "",
+        "claim_flagged": "",
+        "basis_of_action": "",
+        "outcome": "No action located as of 2026-10-12",
+        "document_url": "",
+        "provenance_id": ""
+      }
+    ],
+    "T8_claim_history": [
+      {
+        "snapshot_id": "snap_eur_001",
+        "claim_id": "c_eur_001",
+        "claim_version": "Gentle flake removal for sensitive and dry scalps",
+        "version_date": "2026-10-12",
+        "version_source": "website_snapshot",
+        "change_reason": "first_capture",
+        "enforcement_action_ref": "",
+        "next_version": ""
+      },
+      {
+        "snapshot_id": "snap_hs_001",
+        "claim_id": "c_hs_001",
+        "claim_version": "Classic Clean formula w/ zinc pyrithione (pre-ban)",
+        "version_date": "2021-06-01",
+        "version_source": "archive.org",
+        "change_reason": "regulatory_ban",
+        "enforcement_action_ref": "enf_hs_001",
+        "next_version": "2022 EU reformulation (piroctone olamine-based)"
+      }
+    ],
+    "T9_status_history": [
+      {
+        "status_change_id": "sh_001",
+        "claim_id": "c_vch_002",
+        "status": "RESTRICTED",
+        "set_by": "pipeline_match",
+        "date": "2026-10-12",
+        "basis_ref": "Reg. 655/2013 criterion 5; superlative claim taxonomy"
+      },
+      {
+        "status_change_id": "sh_002",
+        "claim_id": "c_eur_001",
+        "status": "PERMITTED_WITH_CRITERIA",
+        "set_by": "human_review",
+        "date": "2026-10-12",
+        "basis_ref": "pv_002; confidence 0.9 >= 0.85 gate"
+      }
+    ],
+    "T10_corrections": [
+      {
+        "correction_id": "corr_001",
+        "claim_id": "c_ker_001",
+        "flag_type": "data_gap",
+        "flagged_by": "manual_review",
+        "flagged_date": "2026-10-12",
+        "issue_description": "claim_text TO_COLLECT; record created from market scan",
+        "correction_made": "pending live crawl",
+        "correction_date": "",
+        "post_confidence": "LOW"
+      },
+      {
+        "correction_id": "corr_002",
+        "claim_id": "c_vch_001",
+        "flag_type": "verify_required",
+        "flagged_by": "manual_review",
+        "flagged_date": "2026-10-12",
+        "issue_description": "Annex III selenium disulfide entry number and exact cap must be verified at EUR-Lex before render",
+        "correction_made": "pending",
+        "correction_date": "",
+        "post_confidence": "MEDIUM"
+      },
+      {
+        "correction_id": "corr_003",
+        "claim_id": "c_tbs_001",
+        "flag_type": "data_gap",
+        "flagged_by": "manual_review",
+        "flagged_date": "2026-10-12",
+        "issue_description": "piroctone olamine 0.5% figure brand-stated but unverified; provenance row empty",
+        "correction_made": "pending",
+        "correction_date": "",
+        "post_confidence": "LOW"
+      }
+    ],
+    "T11_provenance": [
+      {
+        "provenance_id": "pv_001",
+        "source_type": "public_registry",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009R1223",
+        "source_quote": "Regulation (EC) No 1223/2009, Article 20",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "CELEX:32009R1223"
+      },
+      {
+        "provenance_id": "pv_002",
+        "source_type": "public_registry",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32013R0655",
+        "source_quote": "Reg. 655/2013 criterion 3 (evidential support)",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "CELEX:32013R0655"
+      },
+      {
+        "provenance_id": "pv_003",
+        "source_type": "public_registry",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32021R1902",
+        "source_quote": "Zinc pyrithione CMR 1B - banned in cosmetics from 2022-03-01",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "CELEX:32021R1902"
+      },
+      {
+        "provenance_id": "pv_004",
+        "source_type": "public_registry",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32012R0528",
+        "source_quote": "EU Biocide Reg. 528/2012 (piroctone olamine, PT 2 in-can preservative / anti-dandruff)",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "CELEX:32012R0528"
+      },
+      {
+        "provenance_id": "pv_005",
+        "source_type": "brand_stated",
+        "source_url": "https://www.ducray.com",
+        "source_quote": "Kelual DS: Ciclopirox olamine 1% + Piroctone olamine 0.75% (label)",
+        "captured_date": "2026-10-12",
+        "verified_by": "pipeline",
+        "search_scope": "",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_006",
+        "source_type": "brand_stated",
+        "source_url": "https://www.eucerin.de",
+        "source_quote": "DermoCapillaire Anti-Dandruff: climbazole + piroctone olamine + polidocanol (label)",
+        "captured_date": "2026-10-12",
+        "verified_by": "pipeline",
+        "search_scope": "",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_007",
+        "source_type": "search_negative",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "CPNP (efficacy files not public), PubMed query 'DermoCapillaire anti-dandruff trial', eucerin.de research pages",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_008",
+        "source_type": "search_negative",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "CPNP, PubMed query 'Kelual DS ciclopirox trial', ducray.com research pages",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_009",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_001"
+      },
+      {
+        "provenance_id": "pv_010",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_002"
+      },
+      {
+        "provenance_id": "pv_011",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_003"
+      },
+      {
+        "provenance_id": "pv_012",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_004"
+      },
+      {
+        "provenance_id": "pv_013",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_005"
+      },
+      {
+        "provenance_id": "pv_014",
+        "source_type": "curated_evidence_table",
+        "source_url": "",
+        "source_quote": "",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "ev_006"
+      },
+      {
+        "provenance_id": "pv_015",
+        "source_type": "brand_stated",
+        "source_url": "https://www.alpecin.com",
+        "source_quote": "A3 Anti-Schuppen: piroctone olamine + salicylic acid + fumaric acid",
+        "captured_date": "2026-10-12",
+        "verified_by": "pipeline",
+        "search_scope": "",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_016",
+        "source_type": "brand_stated",
+        "source_url": "https://www.kerastase.com",
+        "source_quote": "Symbiose: salicylic acid + piroctone olamine",
+        "captured_date": "2026-10-12",
+        "verified_by": "pipeline",
+        "search_scope": "",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_017",
+        "source_type": "brand_stated",
+        "source_url": "https://www.vichy.com",
+        "source_quote": "Dercos DS: selenium disulfide 0.6% micronized",
+        "captured_date": "2026-10-12",
+        "verified_by": "pipeline",
+        "search_scope": "",
+        "registry_ref": ""
+      },
+      {
+        "provenance_id": "pv_018",
+        "source_type": "public_registry",
+        "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009R1223 (Annex III)",
+        "source_quote": "Selenium disulfide restricted, rinse-off anti-dandruff max 1% (VERIFY exact entry no. before render)",
+        "captured_date": "2026-10-12",
+        "verified_by": "human_review",
+        "search_scope": "",
+        "registry_ref": "Annex III entry (verify)"
+      }
+    ]
+  }
+}

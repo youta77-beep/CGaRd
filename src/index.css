@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #2C3E50;
+  --color-primary: #A87B4E;
+  --color-cream: #F5F2EB;
+  --color-white: #FFFFFF;
+  --color-espresso: #3D2817;
+}
+
+:root {
+  --bg-main: #2C3E50;
+  --brand-primary: #A87B4E;
+  --surface-cream: #F5F2EB;
+  --surface-white: #FFFFFF;
+  --dark-espresso: #3D2817;
+}
+
+@layer base {
+  html, body {
+    background-color: #2C3E50;
+    color: #F5F2EB;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    scroll-padding-top: 6rem;
+    scroll-behavior: smooth;
+  }
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Video-Style Dynamic Lighting & Motion Keyframes */
+@keyframes sheen-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+@keyframes pulse-glow-gold {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(168, 123, 78, 0.2), 0 0 40px rgba(168, 123, 78, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(168, 123, 78, 0.45), 0 0 60px rgba(168, 123, 78, 0.25);
+  }
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-sheen-sweep {
+  animation: sheen-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow-gold 3s ease-in-out infinite;
+}
+
+.animate-float-subtle {
+  animation: float-subtle 4s ease-in-out infinite;
+}
+
+/* Custom scrollbars matching the bespoke palette */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #2C3E50;
+}
+::-webkit-scrollbar-thumb {
+  background: #A87B4E;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3D2817;
+}
