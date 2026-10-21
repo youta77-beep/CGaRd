@@ -109,7 +109,7 @@ export const WhatCGaRdDoesPage: React.FC<WhatCGaRdDoesPageProps> = ({ onNavigate
           </h1>
 
           <p className="text-base sm:text-lg text-[#F5F2EB]/85 max-w-2xl mx-auto leading-relaxed">
-            CGaRd takes advertised claims, gives them persistent IDs, and matches them against public regulatory records.
+            CGaRd takes advertised cosmetic claims, gives them persistent IDs, and matches them against public regulatory records.
           </p>
 
           <p className="text-xs text-[#F5F2EB]/60 italic max-w-lg mx-auto">
