@@ -2,35 +2,106 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildSheetsSnapshot,
+  CARD_SECTIONS,
   isSafeSourceUrl,
   parseCsv,
   type SheetsTables,
 } from './publicSheets.ts';
 
 const baseTables = (): SheetsTables => ({
-  Products: [{ product_id: 'p1', brand: 'Brand', product_name: 'Product', jurisdiction: 'EU' }],
-  Claims: [{ claim_id: 'c1', product_id: 'p1', claim_text: 'Claim', jurisdiction: 'EU' }],
-  CardSections: [
-    { section_id: 's1', claim_id: 'c1', section_key: 'regulatory_basis', section_label: 'Regulatory basis', display_order: '1', display_text: 'Draft text', data_status: 'IMPORTED_UNVERIFIED', publication_status: 'DRAFT' },
+  Products: [
+    { product_id: 'p1', brand: 'Brand', product_name: 'Product', image_url: '/images/products/p1.jpg' },
+    { product_id: 'p2', brand: 'Other', product_name: 'Other product', image_url: '' },
   ],
-  ActiveEvidence: [], ClaimHistory: [], Sources: [], Regulatory: [], Substantiation: [], Enforcement: [], Corrections: [], ClaimSources: [],
+  Claims: [{ claim_id: 'c1', product_id: 'p1', claim_text: 'Claim' }],
+  Regulatory: [{ regulatory_id: 'r1', claim_id: 'c1', jurisdiction: 'EU', regulatory_status: 'PERMITTED_WITH_CRITERIA', legal_basis: 'Reg', permissible_claim_language: '' }],
+  ClinicalData: [],
+  Ingredients: [{ ingredient_id: 'i1', display_name: 'Ingredient' }],
+  ProductIngredients: [{ product_id: 'p1', ingredient_id: 'i1', concentration: '1%', notification_status: 'UNVERIFIED', source_id: 's1' }],
+  IngredientEvidence: [{ ingredient_id: 'i1', condition: 'dandruff', evidence_status: 'UNKNOWN', source_id: '' }],
+  ClaimHistory: [
+    { history_id: 'h2', claim_id: 'c1', version_number: '10', version_text: 'Later', version_date: '2022-07', source_id: '' },
+    { history_id: 'h1', claim_id: 'c1', version_number: '2', version_text: 'Earlier', version_date: '2000-2022', source_id: '' },
+  ],
+  Enforcement: [],
+  ClaimSources: [{ claim_id: 'c1', section: 'regulatory_basis', source_id: 's1', association_status: 'NEEDS_REVIEW' }],
+  Sources: [{ source_id: 's1', title: 'Source', url: 'https://example.com/a', verification_status: 'UNVERIFIED' }],
+  CardReview: [{ claim_id: 'c1', regulatory_basis: 'DRAFT', clinical_data: 'DRAFT', actives_evidence: 'DRAFT', permissible_claim_language: 'DRAFT', claim_history: 'DRAFT' }],
+  Corrections: [],
 });
 
 test('parseCsv preserves quoted commas, newlines, escaped quotes and trailing blanks', () => {
-  const rows = parseCsv('\uFEFFid,text,blank\r\n1,"a,b\n""quoted""",\r\n');
+  const rows = parseCsv('﻿id,text,blank\r\n1,"a,b\n""quoted""",\r\n');
   assert.deepEqual(rows, [{ id: '1', text: 'a,b\n"quoted"', blank: '' }]);
 });
 
-test('buildSheetsSnapshot rejects duplicate claim ids', () => {
-  const tables = baseTables();
-  tables.Claims.push({ ...tables.Claims[0] });
-  assert.throws(() => buildSheetsSnapshot(tables), /duplicate Claims\.claim_id: c1/);
+test('a valid snapshot indexes every card section source', () => {
+  const snapshot = buildSheetsSnapshot(baseTables());
+  assert.equal(snapshot.regulatoryByClaim.get('c1')?.length, 1);
+  assert.equal(snapshot.ingredientsByProduct.get('p1')?.[0].ingredient_id, 'i1');
+  assert.equal(snapshot.evidenceByIngredient.get('i1')?.length, 1);
+  assert.equal(snapshot.reviewByClaim.get('c1')?.actives_evidence, 'DRAFT');
 });
 
-test('buildSheetsSnapshot rejects a claim whose product is missing', () => {
+test('card sections are the five fixed titles in order', () => {
+  assert.deepEqual(CARD_SECTIONS.map((section) => section.label), [
+    'Regulatory basis',
+    'Clinical data for this product',
+    'Notified actives with established androgenetic alopecia evidence',
+    'Permissible claim language',
+    'Claim history',
+  ]);
+});
+
+test('claim history is sorted by numeric version_number', () => {
+  const snapshot = buildSheetsSnapshot(baseTables());
+  assert.deepEqual(snapshot.historyByClaim.get('c1')?.map((row) => row.history_id), ['h1', 'h2']);
+});
+
+test('rejects duplicate claim ids', () => {
+  const tables = baseTables();
+  tables.Claims.push({ ...tables.Claims[0] });
+  assert.throws(() => buildSheetsSnapshot(tables), /duplicate Claims \(claim_id\): c1/);
+});
+
+test('rejects a claim whose product is missing', () => {
   const tables = baseTables();
   tables.Claims[0].product_id = 'missing';
   assert.throws(() => buildSheetsSnapshot(tables), /unknown product_id missing/);
+});
+
+test('rejects the same ingredient listed twice for one product', () => {
+  const tables = baseTables();
+  tables.ProductIngredients.push({ ...tables.ProductIngredients[0] });
+  assert.throws(() => buildSheetsSnapshot(tables), /duplicate ProductIngredients \(product_id, ingredient_id\): p1 \+ i1/);
+});
+
+test('rejects an unknown ingredient or source reference', () => {
+  const tables = baseTables();
+  tables.ProductIngredients[0].ingredient_id = 'nope';
+  assert.throws(() => buildSheetsSnapshot(tables), /unknown ingredient_id nope/);
+  const other = baseTables();
+  other.ClaimSources[0].source_id = 'nope';
+  assert.throws(() => buildSheetsSnapshot(other), /unknown source_id nope/);
+});
+
+test('rejects the same URL stored under two source ids', () => {
+  const tables = baseTables();
+  tables.Sources.push({ source_id: 's2', title: 'Copy', url: 'https://example.com/a', verification_status: 'UNVERIFIED' });
+  assert.throws(() => buildSheetsSnapshot(tables), /duplicate Sources\.url/);
+});
+
+test('rejects enforcement whose claim belongs to another product', () => {
+  const tables = baseTables();
+  tables.Enforcement.push({ enforcement_id: 'e1', product_id: 'p2', claim_id: 'c1', authority: 'X', action_date: '2018', outcome: '', source_id: '' });
+  assert.throws(() => buildSheetsSnapshot(tables), /claim c1 belongs to p1, not p2/);
+});
+
+test('empty optional tabs are valid', () => {
+  const tables = baseTables();
+  tables.ClinicalData = [];
+  tables.Corrections = [];
+  assert.doesNotThrow(() => buildSheetsSnapshot(tables));
 });
 
 test('source links allow only http and https', () => {

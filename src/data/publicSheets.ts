@@ -1,9 +1,23 @@
 export const DEFAULT_SPREADSHEET_ID =
   import.meta.env?.VITE_CGARD_SPREADSHEET_ID || '1QKGBJxDB_GngxSDz7-VjxHwX3Cf0W47khLTrsWepFow';
 
+/** Fixed card display: every claim card shows these five sections in this order. */
+export const CARD_SECTIONS = [
+  { key: 'regulatory_basis', label: 'Regulatory basis' },
+  { key: 'clinical_data', label: 'Clinical data for this product' },
+  { key: 'actives_evidence', label: 'Notified actives with established androgenetic alopecia evidence' },
+  { key: 'permissible_claim_language', label: 'Permissible claim language' },
+  { key: 'claim_history', label: 'Claim history' },
+] as const;
+
+export type CardSectionKey = (typeof CARD_SECTIONS)[number]['key'];
+
+/** Section 3 counts evidence for this condition only. */
+export const ACTIVES_EVIDENCE_CONDITION = 'androgenetic_alopecia';
+
 export const SHEET_NAMES = [
-  'Products', 'Claims', 'CardSections', 'ActiveEvidence', 'ClaimHistory',
-  'Sources', 'Regulatory', 'Substantiation', 'Enforcement', 'Corrections', 'ClaimSources',
+  'Products', 'Claims', 'Regulatory', 'ClinicalData', 'Ingredients', 'ProductIngredients',
+  'IngredientEvidence', 'ClaimHistory', 'Enforcement', 'ClaimSources', 'Sources', 'CardReview', 'Corrections',
 ] as const;
 
 export type SheetName = (typeof SHEET_NAMES)[number];
@@ -15,14 +29,23 @@ export interface SheetsSnapshot {
   productsById: Map<string, SheetRow>;
   claimsById: Map<string, SheetRow>;
   sourcesById: Map<string, SheetRow>;
-  sectionsByClaim: Map<string, SheetRow[]>;
-  activeEvidenceByClaim: Map<string, SheetRow[]>;
+  ingredientsById: Map<string, SheetRow>;
+  claimsByProduct: Map<string, SheetRow[]>;
+  /** Section 1 and 4: one row per claim and jurisdiction. */
+  regulatoryByClaim: Map<string, SheetRow[]>;
+  /** Section 2: product-level clinical data. */
+  clinicalByProduct: Map<string, SheetRow[]>;
+  /** Section 3: the product's actives (ProductIngredients rows). */
+  ingredientsByProduct: Map<string, SheetRow[]>;
+  /** Section 3: evidence rows per ingredient (all conditions). */
+  evidenceByIngredient: Map<string, SheetRow[]>;
+  /** Section 5: history rows sorted by version_number. */
   historyByClaim: Map<string, SheetRow[]>;
-  regulatoryByClaim: Map<string, SheetRow>;
-  substantiationByClaim: Map<string, SheetRow[]>;
   enforcementByClaim: Map<string, SheetRow[]>;
-  correctionsByClaim: Map<string, SheetRow[]>;
+  enforcementByProduct: Map<string, SheetRow[]>;
   claimSourcesByClaim: Map<string, SheetRow[]>;
+  reviewByClaim: Map<string, SheetRow>;
+  correctionsByClaim: Map<string, SheetRow[]>;
   loadedAt: string;
 }
 
@@ -32,18 +55,55 @@ export interface LoadOptions {
   signal?: AbortSignal;
 }
 
-const REQUIRED_HEADERS: Record<SheetName, string[]> = {
-  Products: ['product_id', 'brand', 'product_name'],
-  Claims: ['claim_id', 'product_id', 'claim_text'],
-  CardSections: ['section_id', 'claim_id', 'section_key', 'display_order', 'data_status', 'publication_status'],
-  ActiveEvidence: ['active_evidence_id', 'product_id', 'claim_id', 'active_name'],
-  ClaimHistory: ['history_id', 'claim_id', 'version_number', 'version_text'],
-  Sources: ['source_id', 'source_url', 'verification_status'],
-  Regulatory: ['regulatory_id', 'claim_id', 'banned_status'],
-  Substantiation: ['substantiation_id', 'claim_id', 'evidence_type'],
-  Enforcement: ['enforcement_id', 'product_id', 'claim_id'],
-  Corrections: ['correction_id', 'claim_id', 'flag_type'],
-  ClaimSources: ['claim_source_id', 'claim_id', 'source_id', 'section_key', 'association_status'],
+interface TableSpec {
+  /** Headers that must exist. */
+  headers: string[];
+  /** Columns whose combined value must be unique and non-empty. */
+  key: string[];
+  /** Optional reference columns: a non-empty value must exist in the target table. */
+  refs: Array<[column: string, target: 'Products' | 'Claims' | 'Sources' | 'Ingredients']>;
+}
+
+const TABLES: Record<SheetName, TableSpec> = {
+  Products: { headers: ['product_id', 'brand', 'product_name', 'image_url'], key: ['product_id'], refs: [] },
+  Claims: { headers: ['claim_id', 'product_id', 'claim_text'], key: ['claim_id'], refs: [['product_id', 'Products']] },
+  Regulatory: {
+    headers: ['regulatory_id', 'claim_id', 'jurisdiction', 'regulatory_status', 'legal_basis', 'permissible_claim_language'],
+    key: ['regulatory_id'], refs: [['claim_id', 'Claims']],
+  },
+  ClinicalData: {
+    headers: ['clinical_id', 'product_id', 'summary', 'status', 'source_id'],
+    key: ['clinical_id'], refs: [['product_id', 'Products'], ['source_id', 'Sources']],
+  },
+  Ingredients: { headers: ['ingredient_id', 'display_name'], key: ['ingredient_id'], refs: [] },
+  ProductIngredients: {
+    headers: ['product_id', 'ingredient_id', 'concentration', 'notification_status', 'source_id'],
+    key: ['product_id', 'ingredient_id'],
+    refs: [['product_id', 'Products'], ['ingredient_id', 'Ingredients'], ['source_id', 'Sources']],
+  },
+  IngredientEvidence: {
+    headers: ['ingredient_id', 'condition', 'evidence_status', 'source_id'],
+    key: ['ingredient_id', 'condition', 'source_id'],
+    refs: [['ingredient_id', 'Ingredients'], ['source_id', 'Sources']],
+  },
+  ClaimHistory: {
+    headers: ['history_id', 'claim_id', 'version_number', 'version_text', 'version_date', 'source_id'],
+    key: ['history_id'], refs: [['claim_id', 'Claims'], ['source_id', 'Sources']],
+  },
+  Enforcement: {
+    headers: ['enforcement_id', 'product_id', 'claim_id', 'authority', 'action_date', 'outcome', 'source_id'],
+    key: ['enforcement_id'], refs: [['product_id', 'Products'], ['claim_id', 'Claims'], ['source_id', 'Sources']],
+  },
+  ClaimSources: {
+    headers: ['claim_id', 'section', 'source_id', 'association_status'],
+    key: ['claim_id', 'section', 'source_id'], refs: [['claim_id', 'Claims'], ['source_id', 'Sources']],
+  },
+  Sources: { headers: ['source_id', 'title', 'url', 'verification_status'], key: ['source_id'], refs: [] },
+  CardReview: {
+    headers: ['claim_id', ...CARD_SECTIONS.map((section) => section.key)],
+    key: ['claim_id'], refs: [['claim_id', 'Claims']],
+  },
+  Corrections: { headers: ['correction_id', 'claim_id', 'flag_type'], key: ['correction_id'], refs: [['claim_id', 'Claims']] },
 };
 
 export function parseCsv(text: string): SheetRow[] {
@@ -51,7 +111,7 @@ export function parseCsv(text: string): SheetRow[] {
   let row: string[] = [];
   let value = '';
   let quoted = false;
-  const input = text.replace(/^\uFEFF/, '');
+  const input = text.replace(/^﻿/, '');
 
   for (let i = 0; i < input.length; i += 1) {
     const char = input[i];
@@ -88,7 +148,7 @@ export function parseCsv(text: string): SheetRow[] {
   const headers = rows[0].map((header) => header.trim());
   if (headers.some((header) => !header)) throw new Error('CSV parse error: empty header');
   return rows.slice(1).map((cells) =>
-    Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? '']))
+    Object.fromEntries(headers.map((header, index) => [header, (cells[index] ?? '').trim()]))
   );
 }
 
@@ -101,15 +161,20 @@ export function isSafeSourceUrl(value: string): boolean {
   }
 }
 
-function indexUnique(rows: SheetRow[], key: string, table: SheetName): Map<string, SheetRow> {
-  const index = new Map<string, SheetRow>();
+function checkKeys(rows: SheetRow[], table: SheetName, key: string[]): void {
+  const seen = new Set<string>();
   for (const row of rows) {
-    const value = row[key]?.trim();
-    if (!value) throw new Error(`${table}.${key} is required`);
-    if (index.has(value)) throw new Error(`duplicate ${table}.${key}: ${value}`);
-    index.set(value, row);
+    const parts = key.map((column) => row[column]?.trim() || '');
+    // Only the first key column is mandatory; later ones (e.g. an optional source_id) may be blank.
+    if (!parts[0]) throw new Error(`${table}.${key[0]} is required`);
+    const value = parts.join(' + ');
+    if (seen.has(value)) throw new Error(`duplicate ${table} (${key.join(', ')}): ${value}`);
+    seen.add(value);
   }
-  return index;
+}
+
+function indexBy(rows: SheetRow[], key: string): Map<string, SheetRow> {
+  return new Map(rows.map((row) => [row[key], row]));
 }
 
 function groupBy(rows: SheetRow[], key: string): Map<string, SheetRow[]> {
@@ -122,54 +187,75 @@ function groupBy(rows: SheetRow[], key: string): Map<string, SheetRow[]> {
   return grouped;
 }
 
-function requireReferences(rows: SheetRow[], key: string, target: Map<string, SheetRow>, label: string): void {
-  for (const row of rows) {
-    const value = row[key]?.trim();
-    if (value && !target.has(value)) throw new Error(`${label} references unknown ${key} ${value}`);
-  }
-}
-
 export function buildSheetsSnapshot(tables: SheetsTables): SheetsSnapshot {
   for (const sheetName of SHEET_NAMES) {
     if (!Array.isArray(tables[sheetName])) throw new Error(`missing sheet: ${sheetName}`);
     const first = tables[sheetName][0];
     if (first) {
-      for (const header of REQUIRED_HEADERS[sheetName]) {
+      for (const header of TABLES[sheetName].headers) {
         if (!(header in first)) throw new Error(`${sheetName} missing required header: ${header}`);
       }
     }
   }
+  for (const sheetName of SHEET_NAMES) checkKeys(tables[sheetName], sheetName, TABLES[sheetName].key);
 
-  const productsById = indexUnique(tables.Products, 'product_id', 'Products');
-  const claimsById = indexUnique(tables.Claims, 'claim_id', 'Claims');
-  const sourcesById = indexUnique(tables.Sources, 'source_id', 'Sources');
-  indexUnique(tables.CardSections, 'section_id', 'CardSections');
-  indexUnique(tables.ActiveEvidence, 'active_evidence_id', 'ActiveEvidence');
-  indexUnique(tables.ClaimHistory, 'history_id', 'ClaimHistory');
-  indexUnique(tables.Regulatory, 'regulatory_id', 'Regulatory');
-  indexUnique(tables.Substantiation, 'substantiation_id', 'Substantiation');
-  indexUnique(tables.Enforcement, 'enforcement_id', 'Enforcement');
-  indexUnique(tables.Corrections, 'correction_id', 'Corrections');
-  indexUnique(tables.ClaimSources, 'claim_source_id', 'ClaimSources');
-
-  requireReferences(tables.Claims, 'product_id', productsById, 'Claims');
-  for (const name of ['CardSections', 'ActiveEvidence', 'ClaimHistory', 'Regulatory', 'Substantiation', 'Corrections', 'ClaimSources'] as SheetName[]) {
-    requireReferences(tables[name], 'claim_id', claimsById, name);
+  const targets = {
+    Products: indexBy(tables.Products, 'product_id'),
+    Claims: indexBy(tables.Claims, 'claim_id'),
+    Sources: indexBy(tables.Sources, 'source_id'),
+    Ingredients: indexBy(tables.Ingredients, 'ingredient_id'),
+  };
+  for (const sheetName of SHEET_NAMES) {
+    for (const [column, target] of TABLES[sheetName].refs) {
+      for (const row of tables[sheetName]) {
+        const value = row[column]?.trim();
+        if (value && !targets[target].has(value)) {
+          throw new Error(`${sheetName} references unknown ${column} ${value}`);
+        }
+      }
+    }
   }
-  requireReferences(tables.ActiveEvidence, 'product_id', productsById, 'ActiveEvidence');
-  requireReferences(tables.Enforcement, 'product_id', productsById, 'Enforcement');
-  requireReferences(tables.ClaimSources, 'source_id', sourcesById, 'ClaimSources');
+
+  // One URL lives in exactly one Sources row.
+  const urls = new Map<string, string>();
+  for (const source of tables.Sources) {
+    const url = source.url?.trim();
+    if (!url) continue;
+    const previous = urls.get(url);
+    if (previous) throw new Error(`duplicate Sources.url ${url} (${previous}, ${source.source_id})`);
+    urls.set(url, source.source_id);
+  }
+
+  // An enforcement row tied to a claim must name that claim's product.
+  for (const row of tables.Enforcement) {
+    const claim = row.claim_id ? targets.Claims.get(row.claim_id) : undefined;
+    if (claim && claim.product_id !== row.product_id) {
+      throw new Error(`Enforcement ${row.enforcement_id}: claim ${row.claim_id} belongs to ${claim.product_id}, not ${row.product_id}`);
+    }
+  }
+
+  const historyByClaim = groupBy(tables.ClaimHistory, 'claim_id');
+  for (const rows of historyByClaim.values()) {
+    rows.sort((a, b) => Number(a.version_number) - Number(b.version_number));
+  }
 
   return {
-    tables, productsById, claimsById, sourcesById,
-    sectionsByClaim: groupBy(tables.CardSections, 'claim_id'),
-    activeEvidenceByClaim: groupBy(tables.ActiveEvidence, 'claim_id'),
-    historyByClaim: groupBy(tables.ClaimHistory, 'claim_id'),
-    regulatoryByClaim: new Map(tables.Regulatory.map((row) => [row.claim_id, row])),
-    substantiationByClaim: groupBy(tables.Substantiation, 'claim_id'),
+    tables,
+    productsById: targets.Products,
+    claimsById: targets.Claims,
+    sourcesById: targets.Sources,
+    ingredientsById: targets.Ingredients,
+    claimsByProduct: groupBy(tables.Claims, 'product_id'),
+    regulatoryByClaim: groupBy(tables.Regulatory, 'claim_id'),
+    clinicalByProduct: groupBy(tables.ClinicalData, 'product_id'),
+    ingredientsByProduct: groupBy(tables.ProductIngredients, 'product_id'),
+    evidenceByIngredient: groupBy(tables.IngredientEvidence, 'ingredient_id'),
+    historyByClaim,
     enforcementByClaim: groupBy(tables.Enforcement, 'claim_id'),
-    correctionsByClaim: groupBy(tables.Corrections, 'claim_id'),
+    enforcementByProduct: groupBy(tables.Enforcement, 'product_id'),
     claimSourcesByClaim: groupBy(tables.ClaimSources, 'claim_id'),
+    reviewByClaim: indexBy(tables.CardReview, 'claim_id'),
+    correctionsByClaim: groupBy(tables.Corrections, 'claim_id'),
     loadedAt: new Date().toISOString(),
   };
 }

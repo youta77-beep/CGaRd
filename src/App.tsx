@@ -9,13 +9,23 @@ import { PipelineRunner } from './components/PipelineRunner';
 import { ReviewQueueManager } from './components/ReviewQueueManager';
 import { RegulatoryProvisionsView } from './components/RegulatoryProvisionsView';
 import { PipelineExecutionReport } from './engine/pipelineEngine';
-import { ProductShowcaseView } from './components/ProductShowcaseView';
-import { DirectLinksView } from './components/DirectLinksView';
 import { LayoutGrid, Layers } from 'lucide-react';
 import { CGaRdLogo } from './components/CGaRdLogo';
 import { WhatCGaRdDoesPage } from './components/WhatCGaRdDoesPage';
+import { useSheetsSnapshot } from './data/useSheetsSnapshot';
+import { buildClaimCard, productsFromSheets } from './data/sheetCards';
+import { SheetsDataStatus, SheetsFirstLoad } from './components/SheetsDataStatus';
+import { SheetShowcase } from './components/SheetShowcase';
+import { SheetSourcesView } from './components/SheetSourcesView';
 
 export default function App() {
+  // Public data: the Google Sheet (see src/data/publicSheets.ts).
+  const sheets = useSheetsSnapshot();
+  const sheetProducts = useMemo(() => (sheets.snapshot ? productsFromSheets(sheets.snapshot) : []), [sheets.snapshot]);
+  const [focusedProductId, setFocusedProductId] = useState<string | null>(null);
+  const [sheetClaimId, setSheetClaimId] = useState<string | null>(null);
+
+  // Legacy built-in dataset: used only by the developer workbench, pipeline and review tools.
   const [productsList, setProductsList] = useState<ProductRecord[]>(ALL_PRODUCTS);
   const [selectedClaimId, setSelectedClaimId] = useState<string>('c_dcy_001');
   const [activeTab, setActiveTab] = useState<'cards' | 'pipeline' | 'review' | 'provisions' | 'links' | 'how-it-works'>(() => {
@@ -97,9 +107,7 @@ export default function App() {
   }, [productsList]);
 
   // Total claims count
-  const totalClaimsCount = useMemo(() => {
-    return productsList.reduce((acc, p) => acc + p.claims.length, 0);
-  }, [productsList]);
+  const totalClaimsCount = sheets.snapshot?.tables.Claims.length ?? 0;
 
   // Toggle deliberate deletion of a provenance field (Issue 1 Verification Test)
   const handleToggleDeleteProvenance = (fieldKey: string) => {
@@ -289,15 +297,15 @@ export default function App() {
 
   // Handler: Export all generated cards as downloadable JSON bundle with complete provenance dossiers
   const handleExportAll = () => {
-    const allCards = productsList.flatMap((p) =>
-      p.claims.map((c) => buildCard(db, c.claim_id, externalMode, deletedProvenanceFields))
-    );
+    const snapshot = sheets.snapshot;
+    if (!snapshot) return;
+    const allCards = snapshot.tables.Claims.map((c) => buildClaimCard(snapshot, c.claim_id));
     const bundleStr = JSON.stringify(allCards, null, 2);
     const blob = new Blob([bundleStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cgard_registry_export_${externalMode ? 'external' : 'internal'}.json`;
+    a.download = `cgard_claim_cards_${snapshot.loadedAt.slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -402,23 +410,27 @@ export default function App() {
 
             {/* MAIN CONTENT: Normal users always get the clean Showcase; Developer gets Showcase or Workbench */}
             {!isDeveloperMode || cardsViewMode === 'showcase' ? (
-              <ProductShowcaseView
-                products={productsList}
-                db={db}
-                isExternalMode={externalMode}
-                selectedClaimId={selectedClaimId}
-                onSelectClaim={(id) => setSelectedClaimId(id)}
-                onInspectDossier={(id) => {
-                  setSelectedClaimId(id);
-                  setCardsViewMode('workbench');
-                }}
-                deletedProvenanceFields={deletedProvenanceFields}
-                onToggleDeleteProvenance={handleToggleDeleteProvenance}
-                onResetDeletedProvenance={handleResetDeletedProvenance}
-                isDeveloperMode={isDeveloperMode}
-              />
+              sheets.snapshot ? (
+                <div className="space-y-4">
+                  <SheetsDataStatus state={sheets} />
+                  <SheetShowcase
+                    snapshot={sheets.snapshot}
+                    products={sheetProducts}
+                    focusedProductId={focusedProductId}
+                    selectedClaimId={sheetClaimId}
+                    onFocusProduct={setFocusedProductId}
+                    onSelectClaim={setSheetClaimId}
+                  />
+                </div>
+              ) : (
+                <SheetsFirstLoad state={sheets} />
+              )
             ) : (
               /* SPLIT WORKBENCH VIEW (DEVELOPER ONLY) */
+              <div className="space-y-4">
+              <p className="rounded-xl border border-amber-400/50 bg-amber-950/40 px-4 py-2 text-xs text-amber-200">
+                Developer workbench: uses the built-in legacy dataset, not the Google Sheet. Public pages read the Sheet.
+              </p>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left: Product & Claim Catalog (4 cols) */}
                 <div className="lg:col-span-4">
@@ -449,6 +461,7 @@ export default function App() {
                   )}
                 </div>
               </div>
+              </div>
             )}
           </div>
         )}
@@ -471,15 +484,23 @@ export default function App() {
 
         {isDeveloperMode && activeTab === 'provisions' && <RegulatoryProvisionsView />}
 
-        {activeTab === 'links' && (
-          <DirectLinksView
-            products={productsList}
-            onSelectProductClaim={(id) => {
-              setSelectedClaimId(id);
-              setActiveTab('cards');
-            }}
-          />
-        )}
+        {activeTab === 'links' &&
+          (sheets.snapshot ? (
+            <div className="space-y-4">
+              <SheetsDataStatus state={sheets} />
+              <SheetSourcesView
+                snapshot={sheets.snapshot}
+                onOpenClaim={(productId, claimId) => {
+                  setFocusedProductId(productId);
+                  setSheetClaimId(claimId);
+                  setActiveTab('cards');
+                  window.scrollTo({ top: 0 });
+                }}
+              />
+            </div>
+          ) : (
+            <SheetsFirstLoad state={sheets} />
+          ))}
       </main>
 
       {/* Global CGaRd Brand Footer */}

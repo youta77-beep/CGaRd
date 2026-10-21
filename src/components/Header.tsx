@@ -66,14 +66,14 @@ export const Header: React.FC<HeaderProps> = ({
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
+        <div className="flex flex-wrap items-center justify-between gap-2 min-h-16 py-2">
           {/* Logo & Identity: CGaRd */}
           <div className="flex items-center cursor-pointer" onClick={() => setActiveTab('cards')}>
             <CGaRdLogo size="md" isDeveloperMode={isDeveloperMode} />
           </div>
 
           {/* Navigation Tabs - Role-based */}
-          <nav className="flex items-center space-x-1 sm:space-x-2 bg-[#3D2817]/40 p-1 rounded-xl border border-[#A87B4E]/30">
+          <nav className="flex flex-wrap items-center gap-1 sm:gap-2 max-w-full bg-[#3D2817]/40 p-1 rounded-xl border border-[#A87B4E]/30">
             {/* 1. What CGaRd does - FIRST THING THE CONSUMER SEES */}
             <button
               onClick={() => {
@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Globe2 className="w-3.5 h-3.5" />
-              <span>{isDeveloperMode ? 'Direct Links & URLs' : 'Verified Sources'}</span>
+              <span>{isDeveloperMode ? 'Direct Links & URLs' : 'Sources'}</span>
             </button>
 
             {/* DEVELOPER-ONLY TABS */}

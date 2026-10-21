@@ -1,14 +1,15 @@
 // Product Photography Map for ClaimGuard Registry
-import alpecinImg from '../assets/images/alpecin_a3_1791578135196.jpg';
-import bodyshopImg from '../assets/images/bodyshop_ginger_1791578105344.jpg';
-import ducrayImg from '../assets/images/ducray_kelual_ds_1791578024765.jpg';
-import eucerinImg from '../assets/images/eucerin_dermo_1791578062608.jpg';
-import headShouldersImg from '../assets/images/head_shoulders_1791578262579.jpg';
-import kerastaseImg from '../assets/images/kerastase_symbiose_1791578227641.jpg';
-import elviveImg from '../assets/images/loreal_elvive_1791578196778.jpg';
-import niveaImg from '../assets/images/nivea_anti_dandruff_1791578081754.jpg';
-import schwarzkopfImg from '../assets/images/schwarzkopf_bonacure_1791578164043.jpg';
-import vichyImg from '../assets/images/vichy_dercos_1791578299205.jpg';
+// Files are served from public/images/products/ (same paths as Products.image_url in the Sheets DB).
+const alpecinImg = '/images/products/alpecin_a3.jpg';
+const bodyshopImg = '/images/products/bodyshop_ginger.jpg';
+const ducrayImg = '/images/products/ducray_kelual_ds.jpg';
+const eucerinImg = '/images/products/eucerin_dermo.jpg';
+const headShouldersImg = '/images/products/head_shoulders.jpg';
+const kerastaseImg = '/images/products/kerastase_symbiose.jpg';
+const elviveImg = '/images/products/loreal_elvive.jpg';
+const niveaImg = '/images/products/nivea_anti_dandruff.jpg';
+const schwarzkopfImg = '/images/products/schwarzkopf_bonacure.jpg';
+const vichyImg = '/images/products/vichy_dercos.jpg';
 
 export interface ProductPhotoInfo {
   slug: string;
