@@ -14,7 +14,7 @@ import { CGaRdLogo } from './components/CGaRdLogo';
 import { WhatCGaRdDoesPage } from './components/WhatCGaRdDoesPage';
 import { useSheetsSnapshot } from './data/useSheetsSnapshot';
 import { buildClaimCard, productsFromSheets } from './data/sheetCards';
-import { SheetsDataStatus, SheetsFirstLoad } from './components/SheetsDataStatus';
+import { SheetsFirstLoad } from './components/SheetsDataStatus';
 import { SheetShowcase } from './components/SheetShowcase';
 import { SheetSourcesView } from './components/SheetSourcesView';
 
@@ -412,7 +412,6 @@ export default function App() {
             {!isDeveloperMode || cardsViewMode === 'showcase' ? (
               sheets.snapshot ? (
                 <div className="space-y-4">
-                  <SheetsDataStatus state={sheets} />
                   <SheetShowcase
                     snapshot={sheets.snapshot}
                     products={sheetProducts}
@@ -487,7 +486,6 @@ export default function App() {
         {activeTab === 'links' &&
           (sheets.snapshot ? (
             <div className="space-y-4">
-              <SheetsDataStatus state={sheets} />
               <SheetSourcesView
                 snapshot={sheets.snapshot}
                 onOpenClaim={(productId, claimId) => {
