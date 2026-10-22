@@ -20,7 +20,7 @@ export const AnimatedVideoPlayer: React.FC<AnimatedVideoPlayerProps> = ({ classN
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(30);
+  const [duration, setDuration] = useState<number>(60);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
   const [showCaptions, setShowCaptions] = useState<boolean>(true);
@@ -83,33 +83,36 @@ export const AnimatedVideoPlayer: React.FC<AnimatedVideoPlayerProps> = ({ classN
     }
   };
 
-
-
   const getActiveCaption = (t: number) => {
-    if (t < 3.0) return 'Every bottle makes a promise.';
-    if (t < 5.0) return 'Claims sit behind regulatory paperwork.';
-    if (t < 7.5) return 'Know if the claim was ever checked.';
-    if (t < 10.0) return 'See which rule the claim sits under.';
-    if (t < 12.5) return 'Spot when there is no test on file.';
-    if (t < 15.0) return 'See how many listed actives have proof.';
-    if (t < 17.5) return 'Know which words the rules allow.';
-    if (t < 20.0) return 'Watch how the claim changed over time.';
-    if (t < 24.0) return 'All regulatory facts reassemble into one card.';
-    if (t < 28.0) return 'Claims: certified ≠ effective.';
-    return 'See how it works · cgard.app';
+    if (t < 4.5) return 'Legal doesn’t always mean it works.';
+    if (t < 6.5) return 'Meet CGaRd.';
+    if (t < 13.5) return 'Here’s a mystery bottle. Let’s look at the claim behind it.';
+    if (t < 17.0) return 'Here’s the full card, in five parts.';
+    if (t < 22.0) return '1 · Regulatory basis. The rule the claim is measured against.';
+    if (t < 27.0) return '2 · Clinical data. Is there a test on file for this product? If not, the card says so.';
+    if (t < 32.0) return '3 · Notified actives. Which ingredients have published evidence for the benefit.';
+    if (t < 36.5) return '4 · Permissible wording. The claims the rules allow the brand to make.';
+    if (t < 40.5) return '5 · Claim history. How the wording and rulings changed, with dates.';
+    if (t < 46.5) return 'Nothing is guessed. Draft and unverified tags stay visible until a source is checked.';
+    if (t < 52.0) return 'Same five parts on every card. Nothing gets a verdict.';
+    if (t < 57.0) return 'Every line links to its source, so you can check it yourself.';
+    return 'CGaRd · Certified isn’t the same as effective. cgard.app/how-it-works';
   };
 
   const transcriptScenes = [
-    { time: '0:00', label: 'Hook', text: 'Every bottle makes a promise. Legal doesn’t always mean it works.' },
-    { time: '0:05', label: 'Feature 1', text: 'Know if the claim has been checked at all.' },
-    { time: '0:07', label: 'Feature 2', text: 'See which rule the claim sits under.' },
-    { time: '0:10', label: 'Feature 3', text: 'Spot when there’s no test on file.' },
-    { time: '0:12', label: 'Feature 4', text: 'See how many listed actives have proof.' },
-    { time: '0:15', label: 'Feature 5', text: 'Know which words the rules allow.' },
-    { time: '0:17', label: 'Feature 6', text: 'Watch how the claim changed over time.' },
-    { time: '0:20', label: 'Feature 7', text: 'All of it in one simple card.' },
-    { time: '0:24', label: 'Philosophy', text: 'CGaRd: Claims: certified ≠ effective.' },
-    { time: '0:28', label: 'Outro', text: 'See how it works at cgard.app/how-it-works' },
+    { time: '0:00', label: 'Hook', text: 'Legal doesn’t always mean it works.' },
+    { time: '0:04', label: 'Intro', text: 'Meet CGaRd.' },
+    { time: '0:06', label: 'Mystery Bottle', text: 'Here’s a mystery bottle. Let’s look at the claim behind it.' },
+    { time: '0:14', label: 'Five Parts Card', text: 'Here’s the full card, in five parts.' },
+    { time: '0:17', label: 'Part 1', text: '1 · Regulatory basis. The rule the claim is measured against.' },
+    { time: '0:22', label: 'Part 2', text: '2 · Clinical data. Is there a test on file for this product? If not, the card says so.' },
+    { time: '0:27', label: 'Part 3', text: '3 · Notified actives. Which ingredients have published evidence for the benefit.' },
+    { time: '0:32', label: 'Part 4', text: '4 · Permissible wording. The claims the rules allow the brand to make.' },
+    { time: '0:36', label: 'Part 5', text: '5 · Claim history. How the wording and rulings changed, with dates.' },
+    { time: '0:40', label: 'Verification', text: 'Nothing is guessed. Draft and unverified tags stay visible until a source is checked.' },
+    { time: '0:46', label: 'Consistency', text: 'Same five parts on every card. Nothing gets a verdict.' },
+    { time: '0:52', label: 'Transparency', text: 'Every line links to its source, so you can check it yourself.' },
+    { time: '0:57', label: 'Outro', text: 'CGaRd: Certified isn’t the same as effective. cgard.app/how-it-works' },
   ];
 
   return (
@@ -327,8 +330,8 @@ export const AnimatedVideoPlayer: React.FC<AnimatedVideoPlayerProps> = ({ classN
             className="border-t border-[#A87B4E]/30 bg-[#2C3E50]/90 p-4 text-xs space-y-2 overflow-hidden"
           >
             <div className="flex items-center justify-between pb-2 border-b border-[#3D2817]">
-              <span className="font-bold text-[#FFFFFF]">30-Second Explainer Script</span>
-              <span className="text-[10px] text-[#A87B4E] font-mono">10 Scenes · Click to Jump</span>
+              <span className="font-bold text-[#FFFFFF]">1-Minute Explainer Script</span>
+              <span className="text-[10px] text-[#A87B4E] font-mono">13 Scenes · Click to Jump</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
               {transcriptScenes.map((item, idx) => (

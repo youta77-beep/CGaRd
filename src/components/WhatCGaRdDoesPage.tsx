@@ -101,7 +101,7 @@ export const WhatCGaRdDoesPage: React.FC<WhatCGaRdDoesPageProps> = ({ onNavigate
         <section className="text-center pt-4 sm:pt-10 space-y-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#3D2817]/70 border border-[#A87B4E]/40 text-[11px] font-mono font-semibold text-[#F5F2EB]">
             <span className="w-2 h-2 rounded-full bg-[#A87B4E] animate-pulse" />
-            <span>CGaRd • Pronounced &quot;guard&quot;</span>
+            <span>CGaRd • Pronounced &quot;Cguard&quot;</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-[#FFFFFF] max-w-3xl mx-auto leading-tight">
@@ -184,7 +184,7 @@ export const WhatCGaRdDoesPage: React.FC<WhatCGaRdDoesPageProps> = ({ onNavigate
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-[#FFFFFF]">
-                The thirty second summary
+                We&#39;re so pumped for you to see this video, check it out! 
               </h2>
               <p className="text-xs text-[#F5F2EB]/70 mt-0.5">
                 Watch how every claim component sits behind official filings.
