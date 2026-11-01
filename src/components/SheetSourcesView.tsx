@@ -60,13 +60,6 @@ export const SheetSourcesView: React.FC<SheetSourcesViewProps> = ({ snapshot, on
           <li key={d.source.sourceId} className="rounded-2xl border border-[#A87B4E]/30 bg-[#3D2817]/50 p-4 space-y-2 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <span className="font-mono text-[10px] uppercase text-[#A87B4E]">{d.sourceType.replace(/_/g, ' ')}</span>
-              <span
-                className={`rounded px-1.5 py-px font-mono text-[9px] uppercase border flex-shrink-0 ${
-                  d.source.verified ? 'border-emerald-400 text-emerald-300' : 'border-amber-400 text-amber-300'
-                }`}
-              >
-                {d.source.verified ? 'Verified' : d.source.statusLabel}
-              </span>
             </div>
             {d.source.url ? (
               <a

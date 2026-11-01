@@ -32,17 +32,7 @@ const ICONS = {
   claim_history: History,
 };
 
-export const RegulatoryStatusPill: React.FC<{ status: string; verified?: boolean }> = ({ status, verified }) => (
-  <span
-    className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-[10px] font-bold uppercase ${
-      STATUS_CLASS[status] || STATUS_CLASS.UNKNOWN
-    }`}
-    title={verified ? 'Regulatory status' : 'Regulatory status from imported data; not yet verified'}
-  >
-    {status.replace(/_/g, ' ')}
-    {!verified && <span className="font-normal normal-case">(unverified)</span>}
-  </span>
-);
+export const RegulatoryStatusPill: React.FC<{ status?: string; verified?: boolean }> = () => null;
 
 const SourceLinks: React.FC<{ sources: SourceRef[] }> = ({ sources }) => {
   if (sources.length === 0) return null;
@@ -63,13 +53,6 @@ const SourceLinks: React.FC<{ sources: SourceRef[] }> = ({ sources }) => {
           ) : (
             <span className="text-[#3D2817]/70">{s.title} (no link on file)</span>
           )}
-          <span
-            className={`rounded px-1.5 py-px font-mono text-[9px] uppercase border ${
-              s.verified ? 'border-emerald-300 text-emerald-700' : 'border-amber-300 text-amber-700'
-            }`}
-          >
-            {s.verified ? 'Verified' : `Reference — ${s.statusLabel.toLowerCase()}`}
-          </span>
         </li>
       ))}
     </ul>
@@ -223,9 +206,6 @@ export const SheetClaimCard: React.FC<{ card: ClaimCard }> = ({ card }) => {
                     {section.label}
                   </span>
                 </h4>
-                <span className={`inline-block rounded border px-1.5 py-px font-mono text-[9px] uppercase ${STATE_CLASS[section.state]}`}>
-                  {STATE_LABEL[section.state]}
-                </span>
               </div>
               <div className="min-w-0">
                 <SectionBody section={section} />
