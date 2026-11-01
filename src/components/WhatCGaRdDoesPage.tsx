@@ -118,7 +118,7 @@ export const WhatCGaRdDoesPage: React.FC<WhatCGaRdDoesPageProps> = ({ onNavigate
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <a
-              href="#output-card"
+              href="#video-explainer"
               className="px-6 py-3 rounded-xl bg-[#A87B4E] hover:opacity-90 text-[#FFFFFF] font-bold text-sm shadow-lg transition inline-flex items-center space-x-2 cursor-pointer"
             >
               <span>See how it works</span>

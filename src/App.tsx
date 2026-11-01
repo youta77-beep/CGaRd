@@ -17,6 +17,8 @@ import { buildClaimCard, productsFromSheets } from './data/sheetCards';
 import { SheetsFirstLoad } from './components/SheetsDataStatus';
 import { SheetShowcase } from './components/SheetShowcase';
 import { SheetSourcesView } from './components/SheetSourcesView';
+import { DeveloperLoginModal } from './components/DeveloperLoginModal';
+import { isAllowedDeveloperEmail } from './auth/developerAuth';
 
 export default function App() {
   // Public data: the Google Sheet (see src/data/publicSheets.ts).
@@ -46,21 +48,66 @@ export default function App() {
   const [externalMode, setExternalMode] = useState<boolean>(false);
   const [deletedProvenanceFields, setDeletedProvenanceFields] = useState<string[]>([]);
 
-  // Developer vs Normal User mode: defaults to false (clean user view)
+  const [developerEmail, setDeveloperEmail] = useState<string | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('claimguard_dev_user');
+      return isAllowedDeveloperEmail(savedUser) ? savedUser : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+
+  // Developer vs Normal User mode: defaults to false (clean user view), only active when authorized
   const [isDeveloperMode, setIsDeveloperMode] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('claimguard_dev_mode') === 'true';
+      const savedUser = localStorage.getItem('claimguard_dev_user');
+      const isAllowed = isAllowedDeveloperEmail(savedUser);
+      return Boolean(isAllowed && localStorage.getItem('claimguard_dev_mode') === 'true');
     } catch {
       return false;
     }
   });
 
   const handleSetDeveloperMode = (val: boolean) => {
-    setIsDeveloperMode(val);
+    if (val) {
+      if (developerEmail && isAllowedDeveloperEmail(developerEmail)) {
+        setIsDeveloperMode(true);
+        try {
+          localStorage.setItem('claimguard_dev_mode', 'true');
+        } catch {}
+      } else {
+        setIsLoginModalOpen(true);
+      }
+    } else {
+      setIsDeveloperMode(false);
+      try {
+        localStorage.setItem('claimguard_dev_mode', 'false');
+      } catch {}
+      if (activeTab === 'pipeline' || activeTab === 'review' || activeTab === 'provisions') {
+        setActiveTab('cards');
+      }
+    }
+  };
+
+  const handleDeveloperLoginSuccess = (email: string) => {
+    setDeveloperEmail(email);
+    setIsDeveloperMode(true);
     try {
-      localStorage.setItem('claimguard_dev_mode', String(val));
+      localStorage.setItem('claimguard_dev_user', email);
+      localStorage.setItem('claimguard_dev_mode', 'true');
     } catch {}
-    if (!val && (activeTab === 'pipeline' || activeTab === 'review' || activeTab === 'provisions')) {
+  };
+
+  const handleDeveloperLogout = () => {
+    setDeveloperEmail(null);
+    setIsDeveloperMode(false);
+    try {
+      localStorage.removeItem('claimguard_dev_user');
+      localStorage.setItem('claimguard_dev_mode', 'false');
+    } catch {}
+    if (activeTab === 'pipeline' || activeTab === 'review' || activeTab === 'provisions') {
       setActiveTab('cards');
     }
   };
@@ -355,6 +402,8 @@ export default function App() {
         onExportAll={handleExportAll}
         isDeveloperMode={isDeveloperMode}
         setIsDeveloperMode={handleSetDeveloperMode}
+        developerEmail={developerEmail}
+        onDeveloperLogout={handleDeveloperLogout}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 pt-6 sm:pt-8">
@@ -510,6 +559,12 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      <DeveloperLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleDeveloperLoginSuccess}
+      />
     </div>
   );
 }

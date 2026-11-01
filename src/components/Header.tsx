@@ -11,6 +11,8 @@ import {
   AlertCircle,
   HelpCircle,
   Globe2,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -23,6 +25,8 @@ interface HeaderProps {
   onExportAll: () => void;
   isDeveloperMode: boolean;
   setIsDeveloperMode: (val: boolean) => void;
+  developerEmail?: string | null;
+  onDeveloperLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -35,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onExportAll,
   isDeveloperMode,
   setIsDeveloperMode,
+  developerEmail,
+  onDeveloperLogout,
 }) => {
   return (
     <header className="border-b border-[#3D2817]/60 bg-[#2C3E50]/95 backdrop-blur-md sticky top-0 z-30 shadow-md">
@@ -44,24 +50,36 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-[#A87B4E] animate-pulse"></span>
             <span className="font-extrabold tracking-wide uppercase text-[#FFFFFF] text-[11px]">
-              CGaRd Developer Workspace Active
+              CGaRd Workspace Active
             </span>
             <span className="text-[#F5F2EB]/50 hidden sm:inline">|</span>
             <span className="font-mono text-[11px] bg-[#2C3E50] px-2 py-0.5 rounded text-[#F5F2EB] border border-[#A87B4E]/30">
-              yousufadilelhag77@gmail.com
+              {developerEmail || 'Authorized Account'}
             </span>
             <span className="text-[#F5F2EB]/70 hidden md:inline text-[11px]">
               (6-Layer Workbench, Pipeline Runner, Review Queue &amp; Test Suites unlocked)
             </span>
           </div>
-          <button
-            onClick={() => setIsDeveloperMode(false)}
-            className="px-2.5 py-1 rounded-lg bg-[#2C3E50] hover:bg-[#A87B4E] text-[#F5F2EB] hover:text-[#FFFFFF] text-[11px] font-semibold transition flex items-center space-x-1.5 border border-[#A87B4E]/40 shadow-sm cursor-pointer"
-            title="Switch back to the simple view seen by normal users"
-          >
-            <Eye className="w-3 h-3 text-[#A87B4E]" />
-            <span>Switch to Simple User View</span>
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsDeveloperMode(false)}
+              className="px-2.5 py-1 rounded-lg bg-[#2C3E50] hover:bg-[#A87B4E] text-[#F5F2EB] hover:text-[#FFFFFF] text-[11px] font-semibold transition flex items-center space-x-1.5 border border-[#A87B4E]/40 shadow-sm cursor-pointer"
+              title="Switch back to the simple view seen by normal users"
+            >
+              <Eye className="w-3 h-3 text-[#A87B4E]" />
+              <span>Switch to Simple User View</span>
+            </button>
+            {onDeveloperLogout && (
+              <button
+                onClick={onDeveloperLogout}
+                className="px-2.5 py-1 rounded-lg bg-[#2C3E50] hover:bg-red-900/60 text-[#F5F2EB]/90 hover:text-white text-[11px] font-semibold transition flex items-center space-x-1.5 border border-[#A87B4E]/40 shadow-sm cursor-pointer"
+                title="Log out of CGaRd Workspace"
+              >
+                <LogOut className="w-3 h-3 text-[#A87B4E]" />
+                <span>Log Out</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -244,14 +262,15 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 onClick={() => setIsDeveloperMode(true)}
-                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition ${
+                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   isDeveloperMode
                     ? 'bg-[#A87B4E] text-[#FFFFFF] shadow-sm'
                     : 'text-[#F5F2EB]/70 hover:text-[#FFFFFF]'
                 }`}
-                title="Unlock full 6-layer workbench, pipeline runner, and test tools for developer"
+                title="Unlock full 6-layer workbench, pipeline runner, and test tools for CGaRd Workspace"
               >
-                <span>Developer</span>
+                <Lock className={`w-3 h-3 ${isDeveloperMode ? 'text-white' : 'text-[#A87B4E]'}`} />
+                <span>CGaRd Workspace</span>
               </button>
             </div>
           </div>
