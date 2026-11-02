@@ -71,10 +71,11 @@ function SectionBody({ section }: { section: CardSection }) {
         <div className="space-y-2">
           {section.entries.map((e, i) => (
             <div key={i} className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <RegulatoryStatusPill status={e.status} verified={section.state === 'verified'} />
-                <span className="font-mono text-[10px] text-[#3D2817]/60">{e.jurisdiction}</span>
-              </div>
+              {e.jurisdiction && e.jurisdiction.trim().toUpperCase() !== 'EU' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[10px] text-[#3D2817]/60">{e.jurisdiction}</span>
+                </div>
+              )}
               {e.legalBasis && <p>{e.legalBasis}</p>}
             </div>
           ))}
@@ -126,7 +127,9 @@ function SectionBody({ section }: { section: CardSection }) {
         <ul className="space-y-1">
           {section.entries.map((e, i) => (
             <li key={i}>
-              <span className="font-mono text-[10px] text-[#3D2817]/60 mr-2">{e.jurisdiction}</span>
+              {e.jurisdiction && e.jurisdiction.trim().toUpperCase() !== 'EU' && (
+                <span className="font-mono text-[10px] text-[#3D2817]/60 mr-2">{e.jurisdiction}</span>
+              )}
               {e.text}
             </li>
           ))}
