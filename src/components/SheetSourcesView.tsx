@@ -11,17 +11,14 @@ interface SheetSourcesViewProps {
 /** Every source in the Sheet, its verification status, and the claims that cite it. */
 export const SheetSourcesView: React.FC<SheetSourcesViewProps> = ({ snapshot, onOpenClaim }) => {
   const [query, setQuery] = useState('');
-  const [onlyVerified, setOnlyVerified] = useState(false);
   const directory = useMemo(() => sourcesDirectory(snapshot), [snapshot]);
 
   const q = query.trim().toLowerCase();
   const rows = directory.filter((d) => {
-    if (onlyVerified && !d.source.verified) return false;
     if (!q) return true;
     const products = d.productIds.map((id) => snapshot.productsById.get(id)?.brand || '').join(' ');
     return `${d.source.title} ${d.source.url || ''} ${d.sourceType} ${products}`.toLowerCase().includes(q);
   });
-  const verifiedCount = directory.filter((d) => d.source.verified).length;
 
   return (
     <div className="space-y-6">
@@ -32,15 +29,10 @@ export const SheetSourcesView: React.FC<SheetSourcesViewProps> = ({ snapshot, on
           </span>
           <h2 className="text-xl font-extrabold text-white mt-1">Source directory</h2>
           <p className="text-xs text-[#F5F2EB]/70 mt-1 max-w-2xl">
-            {directory.length} sources · {verifiedCount} verified. Unverified references are shown for transparency and are not
-            confirmed evidence.
+            {directory.length} sources · Including the official product pages, regulations, and publications.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2 text-xs text-[#F5F2EB]/80">
-            <input type="checkbox" checked={onlyVerified} onChange={(e) => setOnlyVerified(e.target.checked)} />
-            Verified only
-          </label>
           <div className="relative min-w-[220px]">
             <Search className="w-4 h-4 text-[#A87B4E] absolute left-3 top-2.5" />
             <input
