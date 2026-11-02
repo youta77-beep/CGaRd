@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductRecord, Layer1Claim, AuditCard } from '../types/schema';
-import { getProductPhoto, ProductPhotoInfo } from '../data/productImages';
+import { getProductPhoto, ProductPhotoInfo } from '../data/productLookup';
+import { useSheetProducts } from '../data/sheetProductsContext';
+import { ProductImage } from './ProductImage';
 import { buildCard } from '../engine/cardBuilder';
 import { PuzzleCardSpace } from './PuzzleCardSpace';
 import { RegulatoryStatusBadge } from './RegulatoryStatusBadge';
@@ -48,6 +50,7 @@ export const ProductShowcaseView: React.FC<ProductShowcaseViewProps> = ({
   onStoreMutated,
   isDeveloperMode = false,
 }) => {
+  const sheetProducts = useSheetProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [selectedJurisdiction, setSelectedJurisdiction] = useState<string>('all');
@@ -69,7 +72,7 @@ export const ProductShowcaseView: React.FC<ProductShowcaseViewProps> = ({
   // Filtered products list
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      const photoInfo = getProductPhoto(product.slug, product.company);
+      const photoInfo = getProductPhoto(product.slug, product.company, sheetProducts);
       if (selectedBrand !== 'all') {
         const matchesBrand = product.claims.some((c) => c.brand === selectedBrand);
         if (!matchesBrand) return false;
@@ -91,7 +94,7 @@ export const ProductShowcaseView: React.FC<ProductShowcaseViewProps> = ({
       }
       return true;
     });
-  }, [products, selectedBrand, selectedJurisdiction, searchQuery]);
+  }, [products, selectedBrand, selectedJurisdiction, searchQuery, sheetProducts]);
 
   // If a product is currently focused in its specialized space, render PuzzleCardSpace
   const activeProduct = focusedProductSlug
@@ -196,7 +199,7 @@ export const ProductShowcaseView: React.FC<ProductShowcaseViewProps> = ({
       {/* BIG SCREEN 2-IN-A-ROW SHOWCASE GALLERY */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch pt-2">
         {filteredProducts.map((product, idx) => {
-          const photoInfo = getProductPhoto(product.slug, product.company);
+          const photoInfo = getProductPhoto(product.slug, product.company, sheetProducts);
           const firstClaim = product.claims[0];
 
           return (
@@ -250,7 +253,7 @@ export const ProductShowcaseView: React.FC<ProductShowcaseViewProps> = ({
 
                   {/* High-Resolution Large Product Packshot with full headroom */}
                   <div className="w-full flex items-center justify-center h-64 sm:h-72 md:h-80 max-h-[340px]">
-                    <img
+                    <ProductImage
                       src={photoInfo.image_url}
                       alt={photoInfo.product_name}
                       className="h-full w-auto max-h-full max-w-full object-contain drop-shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-300 select-none py-2"

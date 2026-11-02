@@ -5,7 +5,9 @@ import {
   SubstantiationEntryBlock,
   ProductRecord,
 } from '../types/schema';
-import { getProductPhoto } from '../data/productImages';
+import { getProductPhoto } from '../data/productLookup';
+import { useSheetProducts } from '../data/sheetProductsContext';
+import { ProductImage } from './ProductImage';
 import { JURISDICTION_COMPARISON_RECORDS } from '../data/regulatoryProvisions';
 import { toJson, toMarkdown } from '../engine/cardBuilder';
 import { ClaimCardStandard } from './ClaimCardStandard';
@@ -63,6 +65,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
   onStoreMutated,
   isDeveloperMode = false,
 }) => {
+  const sheetProducts = useSheetProducts();
   const [viewMode, setViewMode] = useState<
     'executive' | 'gaps' | 'strategic' | 'dossier' | 'markdown' | 'json'
   >('executive');
@@ -71,7 +74,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({});
   const [isPhotoZoomed, setIsPhotoZoomed] = useState(false);
 
-  const photoInfo = getProductPhoto(card.product_metadata?.slug, card.brand);
+  const photoInfo = getProductPhoto(card.product_metadata?.slug, card.brand, sheetProducts);
   const currentProduct = allProducts?.find(
     (p) => p.slug === card.product_metadata?.slug || p.claims.some((c) => c.claim_id === card.claim_id)
   );
@@ -143,7 +146,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
             className="w-8 h-8 rounded-lg bg-white/10 border border-[#A87B4E]/30 overflow-hidden flex-shrink-0 cursor-pointer hover:border-[#A87B4E] hover:scale-105 transition shadow-sm"
             title="Click to view full packaging photo"
           >
-            <img
+            <ProductImage
               src={photoInfo.image_url}
               alt={card.brand}
               className="w-full h-full object-contain p-0.5"
@@ -318,7 +321,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
                     className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-[#FFFFFF] via-[#F5F2EB] to-[#F5F2EB] border border-[#A87B4E]/30 cursor-pointer shadow-inner flex items-center justify-center group/img"
                     title="Click to view full packaging photo"
                   >
-                    <img
+                    <ProductImage
                       src={photoInfo.image_url}
                       alt={photoInfo.product_name}
                       className="w-full h-full object-contain p-6 sm:p-8 transform group-hover/img:scale-[1.02] transition-transform duration-300 select-none drop-shadow-xl"
@@ -338,7 +341,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
                         {photoInfo.product_name}
                       </h4>
                       <p className="text-xs text-[#F5F2EB]/70 mt-0.5">
-                        {photoInfo.packaging_type}
+                        {photoInfo.brand}
                       </p>
                     </div>
 
@@ -1035,7 +1038,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
             </div>
 
             <div className="w-full aspect-square rounded-2xl bg-white/5 border border-[#A87B4E]/25 p-4 flex items-center justify-center overflow-hidden">
-              <img
+              <ProductImage
                 src={photoInfo.image_url}
                 alt={photoInfo.product_name}
                 className="max-h-full max-w-full object-contain drop-shadow-2xl"
@@ -1043,7 +1046,7 @@ export const AuditCardView: React.FC<AuditCardViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#F5F2EB]/70 pt-2 border-t border-[#A87B4E]/25">
-              <span>{photoInfo.packaging_type}</span>
+              <span>{photoInfo.brand}</span>
               <span className="font-mono text-[#F5F2EB] font-bold">{photoInfo.volume}</span>
             </div>
           </div>

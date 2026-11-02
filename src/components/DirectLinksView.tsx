@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ProductRecord } from '../types/schema';
-import { getProductPhoto } from '../data/productImages';
+import { getProductPhoto } from '../data/productLookup';
+import { useSheetProducts } from '../data/sheetProductsContext';
+import { ProductImage } from './ProductImage';
 import {
   Globe2,
   ExternalLink,
@@ -21,6 +23,7 @@ export const DirectLinksView: React.FC<DirectLinksViewProps> = ({
   products,
   onSelectProductClaim,
 }) => {
+  const sheetProducts = useSheetProducts();
   const [search, setSearch] = useState('');
 
   const filtered = products.filter((p) => {
@@ -65,7 +68,7 @@ export const DirectLinksView: React.FC<DirectLinksViewProps> = ({
       {/* Products Links Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filtered.map((prod) => {
-          const photo = getProductPhoto(prod.slug, prod.company);
+          const photo = getProductPhoto(prod.slug, prod.company, sheetProducts);
           const firstClaim = prod.claims[0];
           const substantiationsWithLinks = prod.substantiation.filter((s) => s.data_source_url);
 
@@ -77,7 +80,7 @@ export const DirectLinksView: React.FC<DirectLinksViewProps> = ({
               {/* Product Header with Photo */}
               <div className="flex items-start space-x-3.5">
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-b from-[#FFFFFF] to-[#F5F2EB] border border-[#A87B4E]/30 p-1 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-sm">
-                  <img
+                  <ProductImage
                     src={photo.image_url}
                     alt={photo.product_name}
                     className="max-h-full max-w-full object-contain"

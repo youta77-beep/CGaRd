@@ -269,7 +269,7 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
                         <span className="text-[10px] font-mono uppercase font-bold text-[#A87B4E]">Claim</span>
                         <RegulatoryStatusPill status={first.regulatoryStatus} />
                       </div>
-                      <p className="italic text-[#F5F2EB] line-clamp-2">&ldquo;{first.text}&rdquo;</p>
+                      <p className="italic text-[#F5F2EB] line-clamp-2 whitespace-pre-line">&ldquo;{first.text}&rdquo;</p>
                     </div>
                   )}
                   <div className="mt-auto pt-3 border-t border-[#A87B4E]/25 flex items-center justify-end gap-1.5 text-xs font-bold text-[#A87B4E] group-hover:text-white">

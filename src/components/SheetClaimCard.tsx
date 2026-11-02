@@ -182,7 +182,7 @@ export const SheetClaimCard: React.FC<{ card: ClaimCard }> = ({ card }) => {
             <p className="font-mono text-[10px] uppercase font-bold text-[#A87B4E]">
               {card.product.brand} · {card.product.name}
             </p>
-            <h3 className="text-sm sm:text-base font-extrabold leading-snug">&ldquo;{card.claim.text}&rdquo;</h3>
+            <h3 className="text-sm sm:text-base font-extrabold leading-snug whitespace-pre-line">&ldquo;{card.claim.text}&rdquo;</h3>
           </div>
           <RegulatoryStatusPill status={card.claim.regulatoryStatus} verified={reg.state === 'verified'} />
         </div>

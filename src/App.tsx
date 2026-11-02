@@ -13,6 +13,7 @@ import { LayoutGrid, Layers } from 'lucide-react';
 import { CGaRdLogo } from './components/CGaRdLogo';
 import { WhatCGaRdDoesPage } from './components/WhatCGaRdDoesPage';
 import { useSheetsSnapshot } from './data/useSheetsSnapshot';
+import { SheetProductsProvider } from './data/sheetProductsContext';
 import { buildClaimCard, productsFromSheets } from './data/sheetCards';
 import { SheetsFirstLoad } from './components/SheetsDataStatus';
 import { SheetShowcase } from './components/SheetShowcase';
@@ -391,6 +392,7 @@ export default function App() {
   }
 
   return (
+    <SheetProductsProvider snapshot={sheets.snapshot}>
     <div className="min-h-screen bg-[#2C3E50] text-[#F5F2EB] flex flex-col font-sans">
       <Header
         activeTab={activeTab}
@@ -566,5 +568,6 @@ export default function App() {
         onLoginSuccess={handleDeveloperLoginSuccess}
       />
     </div>
+    </SheetProductsProvider>
   );
 }

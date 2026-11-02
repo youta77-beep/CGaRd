@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ProductRecord, AuditCard, Layer1Claim } from '../types/schema';
-import { getProductPhoto } from '../data/productImages';
+import { getProductPhoto } from '../data/productLookup';
+import { useSheetProducts } from '../data/sheetProductsContext';
+import { ProductImage } from './ProductImage';
 import { buildCard } from '../engine/cardBuilder';
 import { RegulatoryStatusBadge } from './RegulatoryStatusBadge';
 import { ProvenanceChip } from './ProvenanceChip';
@@ -63,7 +65,8 @@ export const PuzzleCardSpace: React.FC<PuzzleCardSpaceProps> = ({
   onStoreMutated,
   isDeveloperMode = false,
 }) => {
-  const photoInfo = getProductPhoto(product.slug, product.company);
+  const sheetProducts = useSheetProducts();
+  const photoInfo = getProductPhoto(product.slug, product.company, sheetProducts);
 
   // Active claim under this product
   const activeClaim =
@@ -316,7 +319,7 @@ export const PuzzleCardSpace: React.FC<PuzzleCardSpaceProps> = ({
 
             {/* High Resolution Product Packshot (100% Full Uncropped View with Generous Headroom) */}
             <div className="rounded-2xl bg-gradient-to-b from-[#FFFFFF] via-[#F5F2EB] to-[#F5F2EB] pt-12 pb-8 px-6 sm:pt-14 sm:pb-10 sm:px-8 border border-[#A87B4E]/25 flex items-center justify-center shadow-lg relative group min-h-[420px] sm:min-h-[460px]">
-              <img
+              <ProductImage
                 src={photoInfo.image_url}
                 alt={photoInfo.product_name}
                 className="h-64 sm:h-72 md:h-80 w-auto max-h-[340px] max-w-full object-contain drop-shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-300 select-none py-2"

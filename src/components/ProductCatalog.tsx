@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProductRecord, Layer1Claim } from '../types/schema';
-import { getProductPhoto, ProductPhotoInfo } from '../data/productImages';
+import { getProductPhoto, ProductPhotoInfo } from '../data/productLookup';
+import { useSheetProducts } from '../data/sheetProductsContext';
+import { ProductImage } from './ProductImage';
 import { RegulatoryStatusBadge } from './RegulatoryStatusBadge';
 import {
   Search,
@@ -34,6 +36,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   selectedClaimId,
   onSelectClaim,
 }) => {
+  const sheetProducts = useSheetProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [selectedJurisdiction, setSelectedJurisdiction] = useState<string>('all');
@@ -84,7 +87,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   const filteredProducts = useMemo(() => {
     return products
       .map((product) => {
-        const photoInfo = getProductPhoto(product.slug, product.company);
+        const photoInfo = getProductPhoto(product.slug, product.company, sheetProducts);
         const matchingClaims = product.claims.filter((claim) => {
           const reg = product.regulatory.find((r) => r.claim_id === claim.claim_id);
           if (selectedBrand !== 'all' && claim.brand !== selectedBrand) {
@@ -118,7 +121,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         };
       })
       .filter((item) => item.claims.length > 0);
-  }, [products, selectedBrand, selectedJurisdiction, searchQuery]);
+  }, [products, selectedBrand, selectedJurisdiction, searchQuery, sheetProducts]);
 
   // Flattened claims count
   const totalMatchingClaims = useMemo(() => {
@@ -239,7 +242,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                   <div className="flex items-center space-x-3 min-w-0">
                     {/* Product Photo with hover zoom */}
                     <div className="relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gradient-to-b from-[#FFFFFF] to-[#F5F2EB] border border-[#A87B4E]/30 shadow group-hover:border-[#A87B4E] transition">
-                      <img
+                      <ProductImage
                         src={photoInfo.image_url}
                         alt={product.brand_positioning || photoInfo.brand}
                         className="w-full h-full object-contain p-1.5 transform group-hover:scale-105 transition-transform duration-300"
@@ -358,7 +361,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                 >
                   {/* Thumbnail Photo */}
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-[#FFFFFF] to-[#F5F2EB] border border-[#A87B4E]/30 overflow-hidden flex-shrink-0">
-                    <img
+                    <ProductImage
                       src={photoInfo.image_url}
                       alt={claim.brand}
                       className="w-full h-full object-contain p-0.5"
