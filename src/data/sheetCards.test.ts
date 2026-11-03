@@ -5,12 +5,12 @@ import { buildClaimCard, productsFromSheets, safeImageUrl, sourcesDirectory } fr
 
 const tables = (): SheetsTables => ({
   Products: [
-    { product_id: 'p1', brand: 'Brand', product_name: 'Shampoo', image_url: '/images/products/p1.jpg' },
+    { product_id: 'p1', brand: 'Brand', product_name: 'Shampoo', image_url: '/images/products/p1.jpg', category: 'anti_dandruff_shampoo' },
     { product_id: 'p2', brand: 'Other', product_name: 'Other', image_url: 'javascript:alert(1)' },
   ],
   Claims: [
-    { claim_id: 'c1', product_id: 'p1', claim_text: 'Reduces hair loss' },
-    { claim_id: 'c2', product_id: 'p1', claim_text: 'Second claim' },
+    { claim_id: 'c1', product_id: 'p1', claim_text: 'Reduces hair loss', evidence_condition: 'androgenetic_alopecia' },
+    { claim_id: 'c2', product_id: 'p1', claim_text: 'Second claim', evidence_condition: '' },
     { claim_id: 'c3', product_id: 'p2', claim_text: 'Other claim' },
   ],
   Regulatory: [
@@ -47,13 +47,18 @@ const tables = (): SheetsTables => ({
     { claim_id: 'c1', regulatory_basis: 'PUBLISHED', clinical_data: 'DRAFT', actives_evidence: 'PUBLISHED', permissible_claim_language: 'DRAFT', claim_history: 'DRAFT' },
   ],
   Corrections: [],
+  Conditions: [
+    { condition: 'androgenetic_alopecia', display_name: 'Androgenetic alopecia', default_for_category: '' },
+    { condition: 'dandruff', display_name: 'Anti-dandruff', default_for_category: 'anti_dandruff_shampoo' },
+    { condition: 'none', display_name: 'Not an ingredient-efficacy claim', default_for_category: '' },
+  ],
 });
 
 test('every card has the five fixed sections in order', () => {
   const snapshot = buildSheetsSnapshot(tables());
   for (const claimId of ['c1', 'c2', 'c3']) {
     const card = buildClaimCard(snapshot, claimId);
-    assert.deepEqual(card.sections.map((s) => s.label), CARD_SECTIONS.map((s) => s.label));
+    assert.deepEqual(card.sections.map((s) => s.key), CARD_SECTIONS.map((s) => s.key));
   }
 });
 
@@ -78,13 +83,42 @@ test('draft and empty sections are labelled as such', () => {
   assert.ok(other.sections.every((s) => s.publication === 'DRAFT')); // no CardReview row
 });
 
-test('actives count uses only verified notification and verified AGA evidence', () => {
+test('actives count uses only verified notification and evidence for the claim condition', () => {
   const card = buildClaimCard(buildSheetsSnapshot(tables()), 'c1');
   const actives = card.sections[2];
   assert.equal(actives.key, 'actives_evidence');
   if (actives.key !== 'actives_evidence') return;
   assert.equal(actives.summary.label, '1 of 2'); // zinc has dandruff evidence only
   assert.equal(actives.state, 'verified');
+  assert.equal(actives.label, 'Notified actives with established androgenetic alopecia evidence');
+  assert.equal(actives.condition.origin, 'claim');
+});
+
+test('a blank evidence_condition falls back to the product category default', () => {
+  const actives = buildClaimCard(buildSheetsSnapshot(tables()), 'c2').sections[2];
+  if (actives.key !== 'actives_evidence') throw new Error('wrong section');
+  assert.deepEqual(actives.condition, { id: 'dandruff', label: 'Anti-dandruff', origin: 'category' });
+  assert.equal(actives.summary.label, '1 of 2'); // zinc counts for dandruff, caffeine does not
+  assert.equal(actives.label, 'Notified actives with established anti-dandruff evidence');
+});
+
+test('a claim marked "none" is not applicable and counts no evidence', () => {
+  const t = tables();
+  t.Claims[1].evidence_condition = 'none';
+  const actives = buildClaimCard(buildSheetsSnapshot(t), 'c2').sections[2];
+  if (actives.key !== 'actives_evidence') throw new Error('wrong section');
+  assert.equal(actives.summary.label, 'Not applicable');
+  assert.ok(actives.actives.every((a) => a.evidence === ''));
+  assert.equal(actives.label, CARD_SECTIONS[2].label);
+});
+
+test('no claim condition and no category default is "Not assessed"', () => {
+  const t = tables();
+  t.Products[0].category = 'unmapped_category';
+  const actives = buildClaimCard(buildSheetsSnapshot(t), 'c2').sections[2];
+  if (actives.key !== 'actives_evidence') throw new Error('wrong section');
+  assert.equal(actives.condition.origin, 'unset');
+  assert.equal(actives.summary.label, 'Not assessed');
 });
 
 test('actives are "Not assessed" when no notification is verified', () => {

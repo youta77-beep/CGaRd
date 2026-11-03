@@ -5,19 +5,25 @@ export const DEFAULT_SPREADSHEET_ID =
 export const CARD_SECTIONS = [
   { key: 'regulatory_basis', label: 'Regulatory basis' },
   { key: 'clinical_data', label: 'Clinical data for this product' },
-  { key: 'actives_evidence', label: 'Notified actives with established androgenetic alopecia evidence' },
+  { key: 'actives_evidence', label: 'Notified actives with established evidence' },
   { key: 'permissible_claim_language', label: 'Permissible claim language' },
   { key: 'claim_history', label: 'Claim history' },
 ] as const;
 
 export type CardSectionKey = (typeof CARD_SECTIONS)[number]['key'];
 
-/** Section 3 counts evidence for this condition only. */
-export const ACTIVES_EVIDENCE_CONDITION = 'androgenetic_alopecia';
+/**
+ * Section 3 counts ingredient evidence for one condition per claim.
+ * The condition comes from Claims.evidence_condition, or else from the
+ * Conditions row whose default_for_category matches the product's category.
+ * NO_EVIDENCE_CONDITION marks a claim that is not about an ingredient effect.
+ */
+export const NO_EVIDENCE_CONDITION = 'none';
 
 export const SHEET_NAMES = [
   'Products', 'Claims', 'Regulatory', 'ClinicalData', 'Ingredients', 'ProductIngredients',
   'IngredientEvidence', 'ClaimHistory', 'Enforcement', 'ClaimSources', 'Sources', 'CardReview', 'Corrections',
+  'Conditions',
 ] as const;
 
 export type SheetName = (typeof SHEET_NAMES)[number];
@@ -30,6 +36,9 @@ export interface SheetsSnapshot {
   claimsById: Map<string, SheetRow>;
   sourcesById: Map<string, SheetRow>;
   ingredientsById: Map<string, SheetRow>;
+  conditionsById: Map<string, SheetRow>;
+  /** Product category -> default evidence condition (from Conditions.default_for_category). */
+  defaultConditionByCategory: Map<string, string>;
   claimsByProduct: Map<string, SheetRow[]>;
   /** Section 1 and 4: one row per claim and jurisdiction. */
   regulatoryByClaim: Map<string, SheetRow[]>;
@@ -61,12 +70,16 @@ interface TableSpec {
   /** Columns whose combined value must be unique and non-empty. */
   key: string[];
   /** Optional reference columns: a non-empty value must exist in the target table. */
-  refs: Array<[column: string, target: 'Products' | 'Claims' | 'Sources' | 'Ingredients']>;
+  refs: Array<[column: string, target: 'Products' | 'Claims' | 'Sources' | 'Ingredients' | 'Conditions']>;
 }
 
 const TABLES: Record<SheetName, TableSpec> = {
   Products: { headers: ['product_id', 'brand', 'product_name', 'image_url'], key: ['product_id'], refs: [] },
-  Claims: { headers: ['claim_id', 'product_id', 'claim_text'], key: ['claim_id'], refs: [['product_id', 'Products']] },
+  Claims: {
+    headers: ['claim_id', 'product_id', 'claim_text'],
+    key: ['claim_id'],
+    refs: [['product_id', 'Products'], ['evidence_condition', 'Conditions']],
+  },
   Regulatory: {
     headers: ['regulatory_id', 'claim_id', 'jurisdiction', 'regulatory_status', 'legal_basis', 'permissible_claim_language'],
     key: ['regulatory_id'], refs: [['claim_id', 'Claims']],
@@ -84,7 +97,7 @@ const TABLES: Record<SheetName, TableSpec> = {
   IngredientEvidence: {
     headers: ['ingredient_id', 'condition', 'evidence_status', 'source_id'],
     key: ['ingredient_id', 'condition', 'source_id'],
-    refs: [['ingredient_id', 'Ingredients'], ['source_id', 'Sources']],
+    refs: [['ingredient_id', 'Ingredients'], ['condition', 'Conditions'], ['source_id', 'Sources']],
   },
   ClaimHistory: {
     headers: ['history_id', 'claim_id', 'version_number', 'version_text', 'version_date', 'source_id'],
@@ -104,6 +117,7 @@ const TABLES: Record<SheetName, TableSpec> = {
     key: ['claim_id'], refs: [['claim_id', 'Claims']],
   },
   Corrections: { headers: ['correction_id', 'claim_id', 'flag_type'], key: ['correction_id'], refs: [['claim_id', 'Claims']] },
+  Conditions: { headers: ['condition', 'display_name'], key: ['condition'], refs: [] },
 };
 
 export function parseCsv(text: string): SheetRow[] {
@@ -204,6 +218,7 @@ export function buildSheetsSnapshot(tables: SheetsTables): SheetsSnapshot {
     Claims: indexBy(tables.Claims, 'claim_id'),
     Sources: indexBy(tables.Sources, 'source_id'),
     Ingredients: indexBy(tables.Ingredients, 'ingredient_id'),
+    Conditions: indexBy(tables.Conditions, 'condition'),
   };
   for (const sheetName of SHEET_NAMES) {
     for (const [column, target] of TABLES[sheetName].refs) {
@@ -234,6 +249,18 @@ export function buildSheetsSnapshot(tables: SheetsTables): SheetsSnapshot {
     }
   }
 
+  // Each product category has at most one default evidence condition.
+  const defaultConditionByCategory = new Map<string, string>();
+  for (const row of tables.Conditions) {
+    for (const category of (row.default_for_category || '').split(',').map((value) => value.trim()).filter(Boolean)) {
+      const previous = defaultConditionByCategory.get(category);
+      if (previous && previous !== row.condition) {
+        throw new Error(`category ${category} has two default conditions (${previous}, ${row.condition})`);
+      }
+      defaultConditionByCategory.set(category, row.condition);
+    }
+  }
+
   const historyByClaim = groupBy(tables.ClaimHistory, 'claim_id');
   for (const rows of historyByClaim.values()) {
     rows.sort((a, b) => Number(a.version_number) - Number(b.version_number));
@@ -245,6 +272,8 @@ export function buildSheetsSnapshot(tables: SheetsTables): SheetsSnapshot {
     claimsById: targets.Claims,
     sourcesById: targets.Sources,
     ingredientsById: targets.Ingredients,
+    conditionsById: targets.Conditions,
+    defaultConditionByCategory,
     claimsByProduct: groupBy(tables.Claims, 'product_id'),
     regulatoryByClaim: groupBy(tables.Regulatory, 'claim_id'),
     clinicalByProduct: groupBy(tables.ClinicalData, 'product_id'),

@@ -242,10 +242,10 @@ export const WhatCGaRdDoesPage: React.FC<WhatCGaRdDoesPageProps> = ({ onNavigate
                 </div>
               </div>
 
-              {/* Row 3: Notified actives with established androgenetic alopecia evidence */}
+              {/* Row 3: Notified actives with established evidence for the claimed benefit */}
               <div className="grid grid-cols-1 sm:grid-cols-3 p-4 sm:p-5 gap-2">
                 <div className="sm:col-span-1 font-semibold text-sm text-[#F5F2EB]/90 leading-snug">
-                  Notified actives with established androgenetic alopecia evidence
+                  Notified actives with established evidence for the claimed benefit
                 </div>
                 <div className="sm:col-span-2 text-sm text-[#F5F2EB]/60">
                   {/* Active ingredients record */}

@@ -9,8 +9,8 @@
  * - Missing data is shown as "not on file"; it never falls back to another claim.
  */
 import {
-  ACTIVES_EVIDENCE_CONDITION,
   CARD_SECTIONS,
+  NO_EVIDENCE_CONDITION,
   isSafeSourceUrl,
   type CardSectionKey,
   type SheetRow,
@@ -50,10 +50,10 @@ export interface ActiveEntry {
   concentration: string;
   notificationStatus: string;
   notifiedVerified: boolean;
-  /** Best androgenetic alopecia evidence status on file, or '' when none. */
-  agaEvidence: string;
-  agaEstablishedVerified: boolean;
-  agaSummary: string;
+  /** Best evidence status on file for the claim's evidence condition, or '' when none. */
+  evidence: string;
+  establishedVerified: boolean;
+  evidenceSummary: string;
   notes: string;
 }
 
@@ -61,8 +61,18 @@ export interface ActivesSummary {
   listed: number;
   notifiedVerified: number;
   establishedVerified: number;
-  /** "2 of 3" when assessable, otherwise "Not assessed". */
+  /** "2 of 3" when assessable, "Not applicable" for a claim with no ingredient effect, otherwise "Not assessed". */
   label: string;
+}
+
+/** Which benefit section 3 counts evidence for, and where that choice came from. */
+export interface EvidenceCondition {
+  /** Conditions.condition, e.g. "dandruff"; '' when none could be resolved. */
+  id: string;
+  /** Conditions.display_name, e.g. "Anti-dandruff"; '' when unresolved. */
+  label: string;
+  /** "claim" = Claims.evidence_condition, "category" = product category default, "unset" = neither. */
+  origin: 'claim' | 'category' | 'unset';
 }
 
 export interface HistoryVersion {
@@ -91,7 +101,7 @@ interface SectionBase {
 export type CardSection =
   | (SectionBase & { key: 'regulatory_basis'; entries: RegulatoryEntry[] })
   | (SectionBase & { key: 'clinical_data'; entries: ClinicalEntry[] })
-  | (SectionBase & { key: 'actives_evidence'; actives: ActiveEntry[]; summary: ActivesSummary })
+  | (SectionBase & { key: 'actives_evidence'; actives: ActiveEntry[]; summary: ActivesSummary; condition: EvidenceCondition })
   | (SectionBase & { key: 'permissible_claim_language'; entries: Array<{ jurisdiction: string; text: string }> })
   | (SectionBase & { key: 'claim_history'; versions: HistoryVersion[]; events: HistoryEvent[] });
 
@@ -106,6 +116,8 @@ export interface ClaimSummary {
   /** Regulatory status of the first jurisdiction on file, or UNKNOWN. */
   regulatoryStatus: string;
   jurisdictions: string[];
+  /** Raw Claims.evidence_condition ('' when blank; the card resolves a category default). */
+  evidenceCondition: string;
 }
 
 export interface ProductSummary {
@@ -215,6 +227,7 @@ function claimSummary(snapshot: SheetsSnapshot, claim: SheetRow): ClaimSummary {
     notes: claim.notes || '',
     regulatoryStatus: normalizeRegulatoryStatus(regulatory[0]?.regulatory_status),
     jurisdictions: regulatory.map((row) => row.jurisdiction).filter(Boolean),
+    evidenceCondition: claim.evidence_condition || '',
   };
 }
 
@@ -235,6 +248,27 @@ export function productsFromSheets(snapshot: SheetsSnapshot): ProductSummary[] {
     actives: productActives(snapshot, row.product_id),
     claims: (snapshot.claimsByProduct.get(row.product_id) || []).map((claim) => claimSummary(snapshot, claim)),
   }));
+}
+
+/** Claims.evidence_condition wins; otherwise the default condition for the product's category. */
+export function resolveEvidenceCondition(snapshot: SheetsSnapshot, claim: SheetRow, product: SheetRow): EvidenceCondition {
+  const explicit = claim.evidence_condition?.trim();
+  const fromCategory = snapshot.defaultConditionByCategory.get(product.category?.trim() || '');
+  const id = explicit || fromCategory || '';
+  if (!id) return { id: '', label: '', origin: 'unset' };
+  return {
+    id,
+    label: snapshot.conditionsById.get(id)?.display_name || id,
+    origin: explicit ? 'claim' : 'category',
+  };
+}
+
+/** "Notified actives with established anti-dandruff evidence", or the generic title. */
+function activesSectionLabel(condition: EvidenceCondition): string {
+  if (!condition.id || condition.id === NO_EVIDENCE_CONDITION) {
+    return CARD_SECTIONS.find((section) => section.key === 'actives_evidence')!.label;
+  }
+  return `Notified actives with established ${condition.label.toLowerCase()} evidence`;
 }
 
 function publicationOf(review: SheetRow | undefined, key: CardSectionKey): 'DRAFT' | 'PUBLISHED' {
@@ -274,20 +308,22 @@ export function buildClaimCard(snapshot: SheetsSnapshot, claimId: string): Claim
   }));
   const clinicalSources = uniqueSources(clinicalRows.map((row) => sourceRef(snapshot, row.source_id)));
 
-  // 3. Notified actives with established androgenetic alopecia evidence
+  // 3. Notified actives with established evidence for the claim's condition
+  const condition = resolveEvidenceCondition(snapshot, claimRow, productRow);
+  const countsEvidence = !!condition.id && condition.id !== NO_EVIDENCE_CONDITION;
   const activeRows = snapshot.ingredientsByProduct.get(product.productId) || [];
   const activeSources: Array<SourceRef | null> = [];
   const actives: ActiveEntry[] = activeRows.map((row) => {
     const notificationSource = sourceRef(snapshot, row.source_id);
     activeSources.push(notificationSource);
     const notifiedVerified = row.notification_status === 'VERIFIED' && !!notificationSource?.verified;
-    const agaRows = (snapshot.evidenceByIngredient.get(row.ingredient_id) || []).filter(
-      (evidence) => evidence.condition === ACTIVES_EVIDENCE_CONDITION
-    );
+    const conditionRows = countsEvidence
+      ? (snapshot.evidenceByIngredient.get(row.ingredient_id) || []).filter((evidence) => evidence.condition === condition.id)
+      : [];
     let best = '';
     let summary = '';
     let establishedVerified = false;
-    for (const evidence of agaRows) {
+    for (const evidence of conditionRows) {
       const ref = sourceRef(snapshot, evidence.source_id);
       activeSources.push(ref);
       const status = evidence.evidence_status || 'UNKNOWN';
@@ -303,19 +339,22 @@ export function buildClaimCard(snapshot: SheetsSnapshot, claimId: string): Claim
       concentration: row.concentration || '',
       notificationStatus: row.notification_status || 'UNVERIFIED',
       notifiedVerified,
-      agaEvidence: best,
-      agaEstablishedVerified: establishedVerified,
-      agaSummary: summary,
+      evidence: best,
+      establishedVerified,
+      evidenceSummary: summary,
       notes: row.notes || '',
     };
   });
   const notifiedVerified = actives.filter((active) => active.notifiedVerified);
-  const establishedVerified = notifiedVerified.filter((active) => active.agaEstablishedVerified);
+  const establishedVerified = notifiedVerified.filter((active) => active.establishedVerified);
+  let activesLabel = 'Not assessed';
+  if (condition.id === NO_EVIDENCE_CONDITION) activesLabel = 'Not applicable';
+  else if (countsEvidence && notifiedVerified.length > 0) activesLabel = `${establishedVerified.length} of ${notifiedVerified.length}`;
   const activesSummary: ActivesSummary = {
     listed: actives.length,
     notifiedVerified: notifiedVerified.length,
     establishedVerified: establishedVerified.length,
-    label: notifiedVerified.length > 0 ? `${establishedVerified.length} of ${notifiedVerified.length}` : 'Not assessed',
+    label: activesLabel,
   };
 
   // 4. Permissible claim language
@@ -356,7 +395,13 @@ export function buildClaimCard(snapshot: SheetsSnapshot, claimId: string): Claim
   const sections: CardSection[] = [
     { ...make('regulatory_basis', regHasData, regSources), entries: regEntries },
     { ...make('clinical_data', clinicalEntries.length > 0, clinicalSources), entries: clinicalEntries },
-    { ...make('actives_evidence', actives.length > 0, uniqueSources(activeSources)), actives, summary: activesSummary },
+    {
+      ...make('actives_evidence', actives.length > 0, uniqueSources(activeSources)),
+      label: activesSectionLabel(condition),
+      actives,
+      summary: activesSummary,
+      condition,
+    },
     { ...make('permissible_claim_language', languageEntries.length > 0, languageSources), entries: languageEntries },
     { ...make('claim_history', versions.length + events.length > 0, historySources), versions, events },
   ];

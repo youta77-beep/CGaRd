@@ -103,8 +103,12 @@ function SectionBody({ section }: { section: CardSection }) {
             {section.summary.label === 'Not assessed' && (
               <span className="font-normal text-[#3D2817]/65">
                 {' '}
-                — {section.summary.listed} active{section.summary.listed === 1 ? '' : 's'} listed; notification not yet verified
+                — {section.summary.listed} active{section.summary.listed === 1 ? '' : 's'} listed;{' '}
+                {section.condition.id ? 'notification not yet verified' : 'no evidence condition set for this claim'}
               </span>
+            )}
+            {section.summary.label === 'Not applicable' && (
+              <span className="font-normal text-[#3D2817]/65"> — this claim is not about an ingredient effect</span>
             )}
           </p>
           <ul className="space-y-1">
@@ -113,8 +117,13 @@ function SectionBody({ section }: { section: CardSection }) {
                 <span className="font-semibold">{a.name}</span>
                 {a.concentration && <span className="font-mono text-[11px]">{a.concentration}</span>}
                 <span className="text-[11px] text-[#3D2817]/60">
-                  notification {a.notifiedVerified ? 'verified' : a.notificationStatus.toLowerCase()} · AGA evidence:{' '}
-                  {a.agaEvidence ? a.agaEvidence.toLowerCase() : 'not on file'}
+                  notification {a.notifiedVerified ? 'verified' : a.notificationStatus.toLowerCase()}
+                  {section.condition.id && section.condition.id !== 'none' && (
+                    <>
+                      {' '}
+                      · {section.condition.label.toLowerCase()} evidence: {a.evidence ? a.evidence.toLowerCase() : 'not on file'}
+                    </>
+                  )}
                 </span>
               </li>
             ))}

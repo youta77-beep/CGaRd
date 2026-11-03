@@ -13,7 +13,7 @@ const baseTables = (): SheetsTables => ({
     { product_id: 'p1', brand: 'Brand', product_name: 'Product', image_url: '/images/products/p1.jpg' },
     { product_id: 'p2', brand: 'Other', product_name: 'Other product', image_url: '' },
   ],
-  Claims: [{ claim_id: 'c1', product_id: 'p1', claim_text: 'Claim' }],
+  Claims: [{ claim_id: 'c1', product_id: 'p1', claim_text: 'Claim', evidence_condition: '' }],
   Regulatory: [{ regulatory_id: 'r1', claim_id: 'c1', jurisdiction: 'EU', regulatory_status: 'PERMITTED_WITH_CRITERIA', legal_basis: 'Reg', permissible_claim_language: '' }],
   ClinicalData: [],
   Ingredients: [{ ingredient_id: 'i1', display_name: 'Ingredient' }],
@@ -28,6 +28,7 @@ const baseTables = (): SheetsTables => ({
   Sources: [{ source_id: 's1', title: 'Source', url: 'https://example.com/a', verification_status: 'UNVERIFIED' }],
   CardReview: [{ claim_id: 'c1', regulatory_basis: 'DRAFT', clinical_data: 'DRAFT', actives_evidence: 'DRAFT', permissible_claim_language: 'DRAFT', claim_history: 'DRAFT' }],
   Corrections: [],
+  Conditions: [{ condition: 'dandruff', display_name: 'Anti-dandruff', default_for_category: 'anti_dandruff_shampoo' }],
 });
 
 test('parseCsv preserves quoted commas, newlines, escaped quotes and trailing blanks', () => {
@@ -47,7 +48,7 @@ test('card sections are the five fixed titles in order', () => {
   assert.deepEqual(CARD_SECTIONS.map((section) => section.label), [
     'Regulatory basis',
     'Clinical data for this product',
-    'Notified actives with established androgenetic alopecia evidence',
+    'Notified actives with established evidence',
     'Permissible claim language',
     'Claim history',
   ]);
@@ -102,6 +103,21 @@ test('empty optional tabs are valid', () => {
   tables.ClinicalData = [];
   tables.Corrections = [];
   assert.doesNotThrow(() => buildSheetsSnapshot(tables));
+});
+
+test('rejects an evidence condition that is not in Conditions', () => {
+  const tables = baseTables();
+  tables.Claims[0].evidence_condition = 'made_up';
+  assert.throws(() => buildSheetsSnapshot(tables), /unknown evidence_condition made_up/);
+  const other = baseTables();
+  other.IngredientEvidence[0].condition = 'made_up';
+  assert.throws(() => buildSheetsSnapshot(other), /unknown condition made_up/);
+});
+
+test('a category may have only one default condition', () => {
+  const tables = baseTables();
+  tables.Conditions.push({ condition: 'scalp_soothing', display_name: 'Scalp soothing', default_for_category: 'anti_dandruff_shampoo' });
+  assert.throws(() => buildSheetsSnapshot(tables), /two default conditions/);
 });
 
 test('source links allow only http and https', () => {
