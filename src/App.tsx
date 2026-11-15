@@ -154,8 +154,8 @@ export default function App() {
     return productsList.flatMap((p) => p.corrections);
   }, [productsList]);
 
-  // Total claims count
-  const totalClaimsCount = sheets.snapshot?.tables.Claims.length ?? 0;
+  // Total products count (badge on the Products & Claims tab)
+  const totalProductsCount = sheets.snapshot?.tables.Products.length ?? 0;
 
   // Toggle deliberate deletion of a provenance field (Issue 1 Verification Test)
   const handleToggleDeleteProvenance = (fieldKey: string) => {
@@ -400,7 +400,7 @@ export default function App() {
         externalMode={externalMode}
         setExternalMode={setExternalMode}
         reviewQueueCount={pendingReviewCount}
-        totalClaimsCount={totalClaimsCount}
+        totalProductsCount={totalProductsCount}
         onExportAll={handleExportAll}
         isDeveloperMode={isDeveloperMode}
         setIsDeveloperMode={handleSetDeveloperMode}

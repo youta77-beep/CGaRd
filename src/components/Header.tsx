@@ -21,7 +21,7 @@ interface HeaderProps {
   externalMode: boolean;
   setExternalMode: (val: boolean) => void;
   reviewQueueCount: number;
-  totalClaimsCount: number;
+  totalProductsCount: number;
   onExportAll: () => void;
   isDeveloperMode: boolean;
   setIsDeveloperMode: (val: boolean) => void;
@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
   externalMode,
   setExternalMode,
   reviewQueueCount,
-  totalClaimsCount,
+  totalProductsCount,
   onExportAll,
   isDeveloperMode,
   setIsDeveloperMode,
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
               <FileCheck2 className="w-3.5 h-3.5" />
               <span>{isDeveloperMode ? 'Audit Cards' : 'Products & Claims'}</span>
               <span className="ml-1 text-[10px] px-1.5 py-0.2 bg-[#3D2817]/60 text-[#F5F2EB] rounded-full font-mono">
-                {totalClaimsCount}
+                {totalProductsCount}
               </span>
             </button>
 
