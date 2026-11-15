@@ -152,12 +152,27 @@ const ProductSpace: React.FC<SheetShowcaseProps & { product: ProductSummary }> =
   );
 };
 
+const PRODUCT_CATEGORY_OPTIONS = [
+  { value: 'anti_dandruff_shampoo', label: 'Shampoo (Anti-dandruff)' },
+  { value: 'strengthening_repair_shampoo', label: 'Shampoo (Strengthening / Repair)' },
+] as const;
+
+const PRODUCT_CATEGORY_OVERRIDES: Record<string, string> = {
+  prd_dcy_sqn: 'strengthening_repair_shampoo',
+  prd_alp_dk: 'strengthening_repair_shampoo',
+};
+
+function getProductCategory(product: ProductSummary): string {
+  return PRODUCT_CATEGORY_OVERRIDES[product.productId] ?? product.category.trim();
+}
+
 /** Public product gallery and product detail, driven only by the Google Sheet. */
 export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
   const { products, focusedProductId, onFocusProduct, onSelectClaim } = props;
   const [query, setQuery] = useState('');
   const [brand, setBrand] = useState('all');
   const [market, setMarket] = useState('all');
+  const [category, setCategory] = useState('all');
 
   const brands = useMemo(() => [...new Set(products.map((p) => p.brand))].sort(), [products]);
   const markets = useMemo(
@@ -172,6 +187,7 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
   const filtered = products.filter((p) => {
     if (brand !== 'all' && p.brand !== brand) return false;
     if (market !== 'all' && !p.markets.includes(market)) return false;
+    if (category !== 'all' && getProductCategory(p) !== category) return false;
     if (!q) return true;
     return [p.brand, p.name, p.positioning, ...p.actives.map((a) => a.name), ...p.claims.map((c) => c.text)]
       .join(' ')
@@ -216,6 +232,19 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
           {markets.map((m) => (
             <option key={m} value={m}>
               {m}
+            </option>
+          ))}
+        </select>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          aria-label="Product category"
+          className="bg-[#2C3E50] text-[#F5F2EB] border border-[#A87B4E]/30 text-xs rounded-xl px-3 py-2"
+        >
+          <option value="all">Product category</option>
+          {PRODUCT_CATEGORY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>
