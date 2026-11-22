@@ -152,18 +152,14 @@ const ProductSpace: React.FC<SheetShowcaseProps & { product: ProductSummary }> =
   );
 };
 
-const PRODUCT_CATEGORY_OPTIONS = [
-  { value: 'anti_dandruff_shampoo', label: 'Shampoo (Anti-dandruff)' },
-  { value: 'strengthening_repair_shampoo', label: 'Shampoo (Strengthening / Repair)' },
-] as const;
-
-const PRODUCT_CATEGORY_OVERRIDES: Record<string, string> = {
-  prd_dcy_sqn: 'strengthening_repair_shampoo',
-  prd_alp_dk: 'strengthening_repair_shampoo',
+const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
+  anti_dandruff_shampoo: 'Shampoo (Anti-dandruff)',
+  strengthening_repair_shampoo: 'Shampoo (Strengthening / Repair)',
 };
 
-function getProductCategory(product: ProductSummary): string {
-  return PRODUCT_CATEGORY_OVERRIDES[product.productId] ?? product.category.trim();
+/** Display label for a Products.category value; values without a label show as written in the sheet. */
+function categoryLabel(category: string): string {
+  return PRODUCT_CATEGORY_LABELS[category] ?? category;
 }
 
 /** Public product gallery and product detail, driven only by the Google Sheet. */
@@ -179,6 +175,10 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
     () => [...new Set(products.flatMap((p) => p.markets.split(/[;,]/).map((m) => m.trim()).filter(Boolean)))].sort(),
     [products]
   );
+  const categories = useMemo(
+    () => [...new Set(products.map((p) => p.category.trim()).filter(Boolean))].sort(),
+    [products]
+  );
 
   const focused = focusedProductId ? products.find((p) => p.productId === focusedProductId) : null;
   if (focused) return <ProductSpace {...props} product={focused} />;
@@ -187,7 +187,7 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
   const filtered = products.filter((p) => {
     if (brand !== 'all' && p.brand !== brand) return false;
     if (market !== 'all' && !p.markets.includes(market)) return false;
-    if (category !== 'all' && getProductCategory(p) !== category) return false;
+    if (category !== 'all' && p.category.trim() !== category) return false;
     if (!q) return true;
     return [p.brand, p.name, p.positioning, ...p.actives.map((a) => a.name), ...p.claims.map((c) => c.text)]
       .join(' ')
@@ -242,9 +242,9 @@ export const SheetShowcase: React.FC<SheetShowcaseProps> = (props) => {
           className="bg-[#2C3E50] text-[#F5F2EB] border border-[#A87B4E]/30 text-xs rounded-xl px-3 py-2"
         >
           <option value="all">Product category</option>
-          {PRODUCT_CATEGORY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {categoryLabel(c)}
             </option>
           ))}
         </select>
